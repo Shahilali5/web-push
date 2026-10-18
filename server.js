@@ -31,19 +31,31 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Optional Redis Adapter (graceful fallback if Redis is not running)
-if (process.env.REDIS_URL) {
+if (process.env.ENABLE_REDIS === 'true' && process.env.REDIS_URL) {
   try {
-    const pubClient = new IORedis(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
+    const pubClient = new IORedis(process.env.REDIS_URL, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      retryStrategy: times => (times > 1 ? null : 100)
+    });
     const subClient = pubClient.duplicate();
+
+    // Prevent unhandled error event crashes
+    pubClient.on('error', () => {});
+    subClient.on('error', () => {});
+
     pubClient.connect().then(() => subClient.connect()).then(() => {
       io.adapter(createAdapter(pubClient, subClient));
-      console.log('Socket.IO Redis adapter connected');
-    }).catch(err => {
-      console.log('Redis adapter skipped (running in standalone Socket.IO mode):', err.message);
+      console.log('✓ Socket.IO Redis adapter connected');
+    }).catch(() => {
+      try { pubClient.disconnect(); subClient.disconnect(); } catch (_) {}
+      console.log('✓ Running in standalone in-memory Socket.IO mode (Port 3050)');
     });
   } catch (e) {
-    console.log('Running in standalone in-memory Socket.IO mode');
+    console.log('✓ Running in standalone in-memory Socket.IO mode (Port 3050)');
   }
+} else {
+  console.log('✓ Running in standalone in-memory Socket.IO mode (Port 3050)');
 }
 
 // visitors (default namespace)

@@ -86,8 +86,30 @@ echo -e "${GREEN}✓ PORT explicitly set to ${PORT} in .env${NC}"
 echo -e "${BLUE}[4/5] Checking Redis service...${NC}"
 if command -v redis-cli >/dev/null 2>&1 && redis-cli ping >/dev/null 2>&1; then
     echo -e "${GREEN}✓ Local Redis server is active and running.${NC}"
+    sed -i.bak "s/^ENABLE_REDIS=.*/ENABLE_REDIS=true/" .env 2>/dev/null || echo "ENABLE_REDIS=true" >> .env
+    rm -f .env.bak
 else
-    echo -e "${YELLOW}Notice: Redis is not running locally. Server will start in standalone in-memory Socket.IO mode automatically.${NC}"
+    echo -e "${YELLOW}Notice: Redis is not running locally.${NC}"
+    if grep -q "^ENABLE_REDIS=" .env; then
+        sed -i.bak "s/^ENABLE_REDIS=.*/ENABLE_REDIS=false/" .env && rm -f .env.bak
+    else
+        echo "ENABLE_REDIS=false" >> .env
+    fi
+    echo -e "${GREEN}✓ Configured ENABLE_REDIS=false for standalone Socket.IO mode.${NC}"
+
+    # Offer to install Redis if on Debian/Ubuntu VPS
+    if command -v apt-get >/dev/null 2>&1; then
+        echo -e "${CYAN}Optional: Would you like to install Redis now for horizontal clustering? (y/N): ${NC}"
+        read -t 10 -n 1 -r INSTALL_REDIS || INSTALL_REDIS="n"
+        echo
+        if [[ $INSTALL_REDIS =~ ^[Yy]$ ]]; then
+            echo -e "${BLUE}Installing redis-server via apt...${NC}"
+            apt-get update -y && apt-get install -y redis-server
+            systemctl enable redis-server && systemctl start redis-server
+            sed -i.bak "s/^ENABLE_REDIS=.*/ENABLE_REDIS=true/" .env && rm -f .env.bak
+            echo -e "${GREEN}✓ Redis server installed and started.${NC}"
+        fi
+    fi
 fi
 
 # 5. Summary & Startup Instructions
