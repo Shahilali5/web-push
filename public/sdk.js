@@ -3,9 +3,10 @@
    Author: Shahil Ali (https://github.com/Shahilali5)
    Features:
      - 1-line script embed
+     - Razorpay-style smooth bottom/center half-screen modal drawer
      - Site-isolated WebSocket connections (only visitors of your site receive)
      - In-page push sending via WebPush.send({ ... })
-     - Floating Bell Inbox & unread counter
+     - Floating Bell / Message icon trigger with unread counter
      - Web Audio Synthesizer (chime, coin, alert, success)
      - Native Service Worker OS banners with action buttons
    ========================================================================== */
@@ -25,12 +26,27 @@
   var swRegistration = null;
   var HISTORY_KEY = 'webpush_inbox_' + KEY;
 
-  function ensureBootstrapIcons() {
+  function ensureStylesAndIcons() {
     if (!document.querySelector('link[href*="bootstrap-icons"]')) {
       var link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css';
       document.head.appendChild(link);
+    }
+
+    if (!document.getElementById('webpush-sdk-keyframes')) {
+      var style = document.createElement('style');
+      style.id = 'webpush-sdk-keyframes';
+      style.innerHTML = 
+        '@keyframes wpFadeIn { from { opacity: 0; } to { opacity: 1; } }' +
+        '@keyframes wpSlideUp { from { transform: translate(-50%, 40px) scale(0.96); opacity: 0; } to { transform: translate(-50%, 0) scale(1); opacity: 1; } }' +
+        '@keyframes wpSlideDownMobile { from { transform: translateY(100%); } to { transform: translateY(0); } }' +
+        '@keyframes wpPulseRing { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 14px rgba(99, 102, 241, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }' +
+        '.wp-inbox-item:hover { background: rgba(255, 255, 255, 0.05) !important; transform: translateX(3px); }' +
+        '@media (max-width: 640px) {' +
+        '  #webpush-inbox-modal { width: 100% !important; max-width: 100% !important; height: 75vh !important; max-height: 85vh !important; border-radius: 24px 24px 0 0 !important; bottom: 0 !important; top: auto !important; left: 0 !important; transform: none !important; animation: wpSlideDownMobile 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important; }' +
+        '}';
+      document.head.appendChild(style);
     }
   }
 
@@ -101,7 +117,9 @@
         body: item.body || '',
         url: item.url || '/',
         icon: item.icon || '/test/bell.svg',
+        image: item.image || null,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric' }),
         read: false
       });
       if (history.length > 50) history.pop();
@@ -117,52 +135,88 @@
     renderInboxList();
   }
 
-  // Floating Bell Widget
+  // Razorpay-Style Half-Screen Modal / Sheet
   function createInboxWidget() {
     if (!enableWidget || document.getElementById('webpush-inbox-widget')) return;
 
-    var container = document.createElement('div');
-    container.id = 'webpush-inbox-widget';
-    container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999990;font-family:system-ui,-apple-system,sans-serif;';
+    // 1. Floating trigger button (Floating message / bell launcher)
+    var launcher = document.createElement('div');
+    launcher.id = 'webpush-inbox-widget';
+    launcher.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999990;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
 
     var bellBtn = document.createElement('button');
     bellBtn.id = 'webpush-bell-button';
-    bellBtn.style.cssText = 'width:52px;height:52px;border-radius:50%;background:#4f46e5;color:#fff;border:none;box-shadow:0 8px 24px rgba(79,70,229,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform 0.2s;position:relative;outline:none;';
-    bellBtn.innerHTML = '<i class="bi bi-bell-fill"></i>';
+    bellBtn.setAttribute('aria-label', 'Open notification center');
+    bellBtn.style.cssText = 'width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);color:#fff;border:none;box-shadow:0 10px 28px rgba(79,70,229,0.5),0 2px 6px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);position:relative;outline:none;';
+    bellBtn.innerHTML = '<i class="bi bi-chat-left-dots-fill"></i>';
 
     var badge = document.createElement('span');
     badge.id = 'webpush-badge-count';
-    badge.style.cssText = 'position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:10px;border:2px solid #090d16;display:none;';
+    badge.style.cssText = 'position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;border:2px solid #090d16;display:none;box-shadow:0 2px 6px rgba(239,68,68,0.5);';
     bellBtn.appendChild(badge);
 
-    var popover = document.createElement('div');
-    popover.id = 'webpush-inbox-popover';
-    popover.style.cssText = 'display:none;position:absolute;bottom:64px;right:0;width:340px;max-height:460px;background:#0d1322;border:1px solid rgba(255,255,255,0.12);border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.6);backdrop-filter:blur(16px);flex-direction:column;overflow:hidden;z-index:999991;';
+    launcher.appendChild(bellBtn);
+    document.body.appendChild(launcher);
 
-    popover.innerHTML = '<div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.02);">' +
-      '<div style="font-weight:700;font-size:14px;color:#fff;display:flex;align-items:center;gap:8px;"><i class="bi bi-inbox-fill" style="color:#818cf8;"></i> Notifications</div>' +
-      '<button id="webpush-clear-inbox" style="background:none;border:none;color:#94a3b8;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="bi bi-trash"></i> Clear</button>' +
-    '</div>' +
-    '<div id="webpush-inbox-list" style="overflow-y:auto;max-height:380px;display:flex;flex-direction:column;"></div>';
+    // 2. Full-Screen Backdrop & Half-Screen Modal (Razorpay Style)
+    var backdrop = document.createElement('div');
+    backdrop.id = 'webpush-inbox-backdrop';
+    backdrop.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(5,9,18,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:999998;animation:wpFadeIn 0.25s ease-out;align-items:center;justify-content:center;';
 
-    container.appendChild(popover);
-    container.appendChild(bellBtn);
-    document.body.appendChild(container);
+    var modal = document.createElement('div');
+    modal.id = 'webpush-inbox-modal';
+    modal.style.cssText = 'width:480px;max-width:92vw;height:560px;max-height:85vh;background:#0d1322;border:1px solid rgba(255,255,255,0.12);border-radius:24px;box-shadow:0 30px 70px rgba(0,0,0,0.8),0 0 30px rgba(99,102,241,0.25);position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:999999;display:none;flex-direction:column;overflow:hidden;animation:wpSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);font-family:system-ui,-apple-system,sans-serif;';
 
+    modal.innerHTML = 
+      '<!-- Header -->' +
+      '<div style="padding:18px 22px;background:linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg, #4f46e5, #7c3aed);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.4);"><i class="bi bi-bell-fill"></i></div>' +
+          '<div>' +
+            '<div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:-0.01em;">Notifications</div>' +
+            '<div style="font-size:12px;color:#94a3b8;" id="webpush-inbox-subtitle">Updates &amp; Announcements</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<button id="webpush-clear-inbox" title="Clear all notifications" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;font-size:12px;cursor:pointer;padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:5px;transition:all 0.15s ease;">' +
+            '<i class="bi bi-trash3"></i> Clear' +
+          '</button>' +
+          '<button id="webpush-close-modal" title="Close" style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.15s ease;outline:none;">' +
+            '<i class="bi bi-x-lg"></i>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<!-- Content List -->' +
+      '<div id="webpush-inbox-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;padding:10px;"></div>' +
+
+      '<!-- Razorpay-style Footer -->' +
+      '<div style="padding:12px 20px;background:rgba(5,9,18,0.6);border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;font-size:11px;color:#64748b;">' +
+        '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span> Connected via Pure WebSocket' +
+        '</div>' +
+        '<div style="color:#818cf8;font-weight:600;">WebPush Engine</div>' +
+      '</div>';
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+
+    // Launcher interactions
     bellBtn.onmouseenter = function () { this.style.transform = 'scale(1.08)'; };
     bellBtn.onmouseleave = function () { this.style.transform = 'scale(1)'; };
 
     bellBtn.onclick = function (e) {
       e.stopPropagation();
-      var isVisible = popover.style.display === 'flex';
-      popover.style.display = isVisible ? 'none' : 'flex';
-      if (!isVisible) {
-        var history = getHistory();
-        history.forEach(function (h) { h.read = true; });
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-        updateInboxBadge();
-        renderInboxList();
-      }
+      openInboxModal();
+    };
+
+    document.getElementById('webpush-close-modal').onclick = function (e) {
+      e.stopPropagation();
+      closeInboxModal();
+    };
+
+    backdrop.onclick = function () {
+      closeInboxModal();
     };
 
     document.getElementById('webpush-clear-inbox').onclick = function (e) {
@@ -170,12 +224,30 @@
       clearHistory();
     };
 
-    document.addEventListener('click', function (e) {
-      if (!container.contains(e.target)) popover.style.display = 'none';
-    });
-
     updateInboxBadge();
     renderInboxList();
+  }
+
+  function openInboxModal() {
+    var backdrop = document.getElementById('webpush-inbox-backdrop');
+    var modal = document.getElementById('webpush-inbox-modal');
+    if (!backdrop || !modal) return;
+
+    backdrop.style.display = 'block';
+    modal.style.display = 'flex';
+
+    var history = getHistory();
+    history.forEach(function (h) { h.read = true; });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    updateInboxBadge();
+    renderInboxList();
+  }
+
+  function closeInboxModal() {
+    var backdrop = document.getElementById('webpush-inbox-backdrop');
+    var modal = document.getElementById('webpush-inbox-modal');
+    if (backdrop) backdrop.style.display = 'none';
+    if (modal) modal.style.display = 'none';
   }
 
   function updateInboxBadge() {
@@ -192,21 +264,41 @@
 
   function renderInboxList() {
     var list = document.getElementById('webpush-inbox-list');
+    var subtitle = document.getElementById('webpush-inbox-subtitle');
     if (!list) return;
     var history = getHistory();
 
+    if (subtitle) {
+      subtitle.textContent = history.length ? history.length + ' message' + (history.length > 1 ? 's' : '') : 'No notifications yet';
+    }
+
     if (!history.length) {
-      list.innerHTML = '<div style="padding:32px 16px;text-align:center;color:#64748b;font-size:12px;"><i class="bi bi-inbox" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.5;"></i>No notifications yet</div>';
+      list.innerHTML = 
+        '<div style="padding:60px 24px;text-align:center;color:#64748b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;margin:auto;">' +
+          '<div style="width:64px;height:64px;border-radius:20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:28px;color:#818cf8;opacity:0.8;"><i class="bi bi-inbox"></i></div>' +
+          '<div style="font-size:15px;font-weight:600;color:#94a3b8;">All Caught Up!</div>' +
+          '<div style="font-size:12px;color:#64748b;max-width:240px;line-height:1.5;">You will receive real-time updates and announcements right here.</div>' +
+        '</div>';
       return;
     }
 
     list.innerHTML = history.map(function (item) {
-      return '<div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;display:flex;gap:12px;align-items:flex-start;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.04)\'" onmouseout="this.style.background=\'none\'" onclick="window.open(\'' + (item.url || '/') + '\',\'_blank\')">' +
-        '<img src="' + item.icon + '" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0;" alt="icon">' +
+      var bannerHtml = item.image 
+        ? '<img src="' + item.image + '" style="width:100%;height:100px;object-fit:cover;border-radius:10px;margin-top:8px;" alt="Banner">' 
+        : '';
+
+      return '<div class="wp-inbox-item" style="padding:14px 16px;margin-bottom:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:14px;cursor:pointer;display:flex;gap:14px;align-items:flex-start;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);" onclick="window.open(\'' + (item.url || '/') + '\',\'_blank\')">' +
+        '<img src="' + item.icon + '" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.05);box-shadow:0 4px 10px rgba(0,0,0,0.3);" alt="icon">' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:13px;font-weight:600;color:#fff;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.title + '</div>' +
-          '<div style="font-size:12px;color:#94a3b8;line-height:1.4;margin-top:2px;">' + item.body + '</div>' +
-          '<div style="font-size:10px;color:#64748b;margin-top:4px;">' + item.time + '</div>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+            '<div style="font-size:14px;font-weight:700;color:#fff;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.title + '</div>' +
+            '<span style="font-size:11px;color:#64748b;white-space:nowrap;">' + (item.time || '') + '</span>' +
+          '</div>' +
+          '<div style="font-size:12px;color:#94a3b8;line-height:1.45;margin-top:4px;">' + item.body + '</div>' +
+          bannerHtml +
+          '<div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:11px;color:#818cf8;font-weight:600;">' +
+            '<span>Open Link</span> <i class="bi bi-arrow-up-right"></i>' +
+          '</div>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -423,7 +515,7 @@
     });
   }
 
-  // In-Page Notification Sender (Send from the site where script is embedded)
+  // In-Page Notification Sender
   function sendPush(options) {
     var payload = Object.assign({
       site_key: KEY,
@@ -453,16 +545,14 @@
     send: sendPush,
     sendNotification: sendPush,
     playSound: playSound,
-    openInbox: function () {
-      var p = document.getElementById('webpush-inbox-popover');
-      if (p) p.style.display = 'flex';
-    },
+    openInbox: openInboxModal,
+    closeInbox: closeInboxModal,
     clearInbox: clearHistory,
     getSocket: function () { return socketInstance; },
     getSiteKey: function () { return KEY; }
   };
 
-  ensureBootstrapIcons();
+  ensureStylesAndIcons();
   initServiceWorker();
   initSocket();
 
