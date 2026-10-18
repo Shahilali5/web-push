@@ -89,7 +89,11 @@ const handleCustomNotify = wrap(async (req, res) => {
   let broadcastResult = null;
 
   if (io) {
-    if (target === 'all') {
+    if (target.startsWith('socket:')) {
+      const sockId = target.replace('socket:', '');
+      io.to(sockId).emit('notify', payload);
+      broadcastResult = { target: 'device:' + sockId, status: 'dispatched_to_single_device' };
+    } else if (target === 'all') {
       broadcastResult = await broadcastToLargeAudience(io, 'all', payload);
     } else {
       io.to(target).emit('notify', payload);

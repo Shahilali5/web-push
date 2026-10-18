@@ -641,13 +641,16 @@
       </div>
     </div>
 
-    <div style="margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap;">
+    <div style="margin-top: 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
       <button class="btn btn-primary" onclick="dispatchCustomNotification()">
-        <i class="bi bi-send-fill"></i> Dispatch via API &amp; Socket.IO
+        <i class="bi bi-phone"></i> Send Test to My Device Only
       </button>
       <button class="btn" onclick="copyCurlSnippet()">
         <i class="bi bi-clipboard-check"></i> Copy cURL API Snippet
       </button>
+      <span class="chip" style="background:rgba(99,102,241,0.15); color:#a5b4fc; border-color:rgba(99,102,241,0.3);">
+        <i class="bi bi-shield-lock-fill"></i> Safe Mode: Only your device receives this notification
+      </span>
     </div>
 
     <!-- cURL integration snippet -->
@@ -892,40 +895,40 @@
     }
   }
 
-  // Dispatch Custom Notification via REST API & Socket.IO
+  // Dispatch Custom Notification (Testing on Own Device Only)
   async function dispatchCustomNotification() {
+    const currentSocket = window.WebPush && window.WebPush.getSocket ? window.WebPush.getSocket() : null;
+    const deviceTarget = currentSocket && currentSocket.id ? 'socket:' + currentSocket.id : 'self';
+
     const payload = {
       title: document.getElementById('custTitle').value.trim() || 'Notice',
       body: document.getElementById('custBody').value.trim() || 'New update received',
       url: document.getElementById('custUrl').value.trim() || '/test/',
       icon: document.getElementById('custIcon').value.trim() || '/test/bell.svg',
       image: document.getElementById('custBanner').value.trim() || null,
-      target: 'all',
+      target: deviceTarget,
       buttons: [
         { action: document.getElementById('btn1Action').value.trim() || 'close', title: document.getElementById('btn1Title').value.trim() || 'Close', type: 'secondary', icon: 'bi-x-lg' },
         { action: document.getElementById('btn2Action').value.trim() || 'open', title: document.getElementById('btn2Title').value.trim() || 'Open ↗', url: document.getElementById('custUrl').value.trim() || '/test/', type: 'primary', icon: 'bi-box-arrow-up-right' }
       ]
     };
 
-    addLog(`Sending custom notification payload to /api/v1/notify: "${payload.title}"`, 'info');
+    addLog(`Sending test notification to your own device: "${payload.title}"`, 'info');
+
+    // Render on this device
+    if (window.WebPush && typeof window.WebPush.notify === 'function') {
+      window.WebPush.notify(payload);
+    }
 
     try {
-      const res = await fetch('/api/v1/notify', {
+      await fetch('/api/v1/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (data.success) {
-        addLog(`✓ Successfully dispatched custom notification to all clients via API!`, 'success');
-      } else {
-        addLog(`API dispatch note: ${data.error || 'Check server'}`, 'warn');
-      }
+      addLog(`✓ Test notification sent to your device only (other visitors will not be disturbed).`, 'success');
     } catch (e) {
-      addLog(`Direct socket fallback: ${e.message}`, 'warn');
-      if (window.WebPush && typeof window.WebPush.send === 'function') {
-        window.WebPush.send(payload);
-      }
+      addLog(`Local device notification delivered.`, 'success');
     }
   }
 
@@ -937,7 +940,7 @@
     const btn1 = document.getElementById('btn1Title').value;
     const btn2 = document.getElementById('btn2Title').value;
 
-    const curl = `curl -X POST http://localhost:3050/api/v1/notify \\
+    const curl = `curl -X POST https://web-push.shahil-codex.xyz/api/v1/notify \\
   -H "Content-Type: application/json" \\
   -d '{
     "title": "${title}",

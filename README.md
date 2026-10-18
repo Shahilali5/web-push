@@ -13,7 +13,7 @@
 
 <br/>
 
-[Live Test Lab](http://localhost:3050/test/) • [Admin Dashboard](http://localhost:3050/admin/) • [REST API](#-rest-api-reference) • [Add to Your Project](#-how-to-add-webpush-to-your-own-project) • [Contributors](#-contributors)
+[🚀 Live Demo](https://web-push.shahil-codex.xyz/test/) • [Admin Dashboard](https://web-push.shahil-codex.xyz/admin/) • [REST API](#-rest-api-reference) • [Add to Your Project](#-how-to-add-webpush-to-your-own-project) • [Contributors](#-contributors)
 
 </div>
 
@@ -89,16 +89,16 @@ cp .env.example .env
 node server.js
 ```
 
-### 3. Open in Browser
-- **🧪 Interactive Test Web Lab:** [http://localhost:3050/test/](http://localhost:3050/test/)
-- **🔔 Admin Dashboard:** [http://localhost:3050/admin/](http://localhost:3050/admin/)
-- **📦 Client SDK File:** [http://localhost:3050/sdk.js](http://localhost:3050/sdk.js)
+### 3. Live Endpoints
+- **🧪 Interactive Test Web Lab:** [https://web-push.shahil-codex.xyz/test/](https://web-push.shahil-codex.xyz/test/)
+- **🔔 Admin Dashboard:** [https://web-push.shahil-codex.xyz/admin/](https://web-push.shahil-codex.xyz/admin/)
+- **📦 Client SDK File:** [https://web-push.shahil-codex.xyz/sdk.js](https://web-push.shahil-codex.xyz/sdk.js)
 
 ---
 
 ## 🚀 How to Add WebPush to Your Own Project
 
-Integrating WebPush into any existing website or web app takes less than 60 seconds:
+Integrating WebPush into any existing website takes less than 60 seconds:
 
 ### Step 1: Add the SDK to your Website
 Paste this tag before `</body>` on your site:
@@ -107,7 +107,7 @@ Paste this tag before `</body>` on your site:
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
 <!-- WebPush Client SDK -->
-<script src="http://YOUR_SERVER_IP:3050/sdk.js"
+<script src="https://web-push.shahil-codex.xyz/sdk.js"
         data-site-key="change-me-site"
         data-toast="top-right"
         data-auto="false"
@@ -134,7 +134,8 @@ cp public/sw.js /path/to/your/website/sw.js
 You can send notifications from **any programming language** or server by calling `POST /api/v1/notify`:
 
 ### Endpoint
-`POST http://localhost:3050/api/v1/notify`
+`POST https://web-push.shahil-codex.xyz/api/v1/notify`
+*(Or `http://localhost:3050/api/v1/notify` for local development)*
 
 ### Headers
 ```http
