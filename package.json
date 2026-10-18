@@ -1,10 +1,27 @@
 {
-  "name": "push-system",
-  "version": "1.0.0",
-  "private": true,
+  "name": "webpush-system",
+  "version": "2.0.0",
+  "description": "Open source, 100% self-hosted real-time web push notification system built with Socket.IO and Node.js. Zero Firebase, site-isolated delivery, and smooth notification inbox drawer modal.",
+  "keywords": [
+    "web-push",
+    "push-notifications",
+    "socketio",
+    "self-hosted",
+    "onesignal-alternative",
+    "pusher-alternative",
+    "zero-firebase",
+    "real-time",
+    "inbox-widget",
+    "notification-center"
+  ],
+  "author": "Shahil Ali (https://github.com/Shahilali5)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Shahilali5/web-push.git"
+  },
+  "license": "MIT",
   "scripts": {
-    "start": "node server.js",
-    "worker": "node src/worker.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",

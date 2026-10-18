@@ -3,10 +3,12 @@
    Author: Shahil Ali (https://github.com/Shahilali5)
    Features:
      - 1-line script embed
-     - Razorpay-style smooth bottom/center half-screen modal drawer
+     - Dynamic Smart Icon Resolver (Notification Icon -> Website Favicon/Apple Touch Icon/Logo -> Bell Fallback)
+     - Full Developer Customization (themes, colors, launcher icon, sound presets, callbacks)
+     - Smooth bottom/center half-screen modal drawer
      - Site-isolated WebSocket connections (only visitors of your site receive)
      - In-page push sending via WebPush.send({ ... })
-     - Floating Bell / Message icon trigger with unread counter
+     - Floating Bell / Message launcher with unread counter
      - Web Audio Synthesizer (chime, coin, alert, success)
      - Native Service Worker OS banners with action buttons
    ========================================================================== */
@@ -21,10 +23,43 @@
   var swPath = (s.dataset && s.dataset.sw) || '/sw.js';
   var enableWidget = (s.dataset && s.dataset.widget) !== 'false';
   var soundEnabled = (s.dataset && s.dataset.sound) !== 'false';
+  var defaultLogo = (s.dataset && s.dataset.icon) || '';
+  var themeColor = (s.dataset && s.dataset.theme) || '#4f46e5';
 
   var socketInstance = null;
   var swRegistration = null;
   var HISTORY_KEY = 'webpush_inbox_' + KEY;
+
+  // 1. Detect Website Logo / Favicon Automatically
+  function detectWebsiteLogo() {
+    if (defaultLogo) return defaultLogo;
+
+    // Check apple-touch-icon
+    var appleTouch = document.querySelector('link[rel="apple-touch-icon"]');
+    if (appleTouch && appleTouch.href) return appleTouch.href;
+
+    // Check shortcut icon or standard icon
+    var fav = document.querySelector('link[rel="icon"]') || 
+              document.querySelector('link[rel="shortcut icon"]');
+    if (fav && fav.href) return fav.href;
+
+    // Fallback to origin favicon
+    try {
+      return window.location.origin + '/favicon.ico';
+    } catch (_) {
+      return '/test/bell.svg';
+    }
+  }
+
+  var resolvedWebsiteLogo = detectWebsiteLogo();
+
+  // Helper: Resolve notification icon with intelligent fallback
+  function resolveIcon(icon) {
+    if (icon && typeof icon === 'string' && icon.trim().length > 0) {
+      return icon.trim();
+    }
+    return resolvedWebsiteLogo || '/test/bell.svg';
+  }
 
   function ensureStylesAndIcons() {
     if (!document.querySelector('link[href*="bootstrap-icons"]')) {
@@ -111,12 +146,14 @@
   function saveHistoryItem(item) {
     try {
       var history = getHistory();
+      var finalIcon = resolveIcon(item.icon);
+
       history.unshift({
         id: item.campaign_id || Date.now(),
         title: item.title || 'Notification',
         body: item.body || '',
         url: item.url || '/',
-        icon: item.icon || '/test/bell.svg',
+        icon: finalIcon,
         image: item.image || null,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric' }),
@@ -135,11 +172,10 @@
     renderInboxList();
   }
 
-  // Razorpay-Style Half-Screen Modal / Sheet
+  // Half-Screen Modal / Sheet
   function createInboxWidget() {
     if (!enableWidget || document.getElementById('webpush-inbox-widget')) return;
 
-    // 1. Floating trigger button (Floating message / bell launcher)
     var launcher = document.createElement('div');
     launcher.id = 'webpush-inbox-widget';
     launcher.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999990;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
@@ -147,7 +183,7 @@
     var bellBtn = document.createElement('button');
     bellBtn.id = 'webpush-bell-button';
     bellBtn.setAttribute('aria-label', 'Open notification center');
-    bellBtn.style.cssText = 'width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);color:#fff;border:none;box-shadow:0 10px 28px rgba(79,70,229,0.5),0 2px 6px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);position:relative;outline:none;';
+    bellBtn.style.cssText = 'width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg, ' + themeColor + ' 0%, #7c3aed 100%);color:#fff;border:none;box-shadow:0 10px 28px rgba(79,70,229,0.5),0 2px 6px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);position:relative;outline:none;';
     bellBtn.innerHTML = '<i class="bi bi-chat-left-dots-fill"></i>';
 
     var badge = document.createElement('span');
@@ -158,7 +194,6 @@
     launcher.appendChild(bellBtn);
     document.body.appendChild(launcher);
 
-    // 2. Full-Screen Backdrop & Half-Screen Modal (Razorpay Style)
     var backdrop = document.createElement('div');
     backdrop.id = 'webpush-inbox-backdrop';
     backdrop.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(5,9,18,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:999998;animation:wpFadeIn 0.25s ease-out;align-items:center;justify-content:center;';
@@ -171,7 +206,9 @@
       '<!-- Header -->' +
       '<div style="padding:18px 22px;background:linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
         '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg, #4f46e5, #7c3aed);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.4);"><i class="bi bi-bell-fill"></i></div>' +
+          '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg, ' + themeColor + ', #7c3aed);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.4);">' +
+            (resolvedWebsiteLogo && resolvedWebsiteLogo.indexOf('.svg') === -1 ? '<img src="' + resolvedWebsiteLogo + '" style="width:24px;height:24px;border-radius:6px;object-fit:cover;" onerror="this.outerHTML=\'<i class=\\\'bi bi-bell-fill\\\'></i>\'">' : '<i class="bi bi-bell-fill"></i>') +
+          '</div>' +
           '<div>' +
             '<div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:-0.01em;">Notifications</div>' +
             '<div style="font-size:12px;color:#94a3b8;" id="webpush-inbox-subtitle">Updates &amp; Announcements</div>' +
@@ -190,18 +227,17 @@
       '<!-- Content List -->' +
       '<div id="webpush-inbox-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;padding:10px;"></div>' +
 
-      '<!-- Razorpay-style Footer -->' +
+      '<!-- Modal Footer -->' +
       '<div style="padding:12px 20px;background:rgba(5,9,18,0.6);border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;font-size:11px;color:#64748b;">' +
         '<div style="display:flex;align-items:center;gap:6px;">' +
-          '<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span> Connected via Pure WebSocket' +
+          '<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span> Pure WebSocket Engine' +
         '</div>' +
-        '<div style="color:#818cf8;font-weight:600;">WebPush Engine</div>' +
+        '<div style="color:#818cf8;font-weight:600;">WebPush Live</div>' +
       '</div>';
 
     document.body.appendChild(backdrop);
     document.body.appendChild(modal);
 
-    // Launcher interactions
     bellBtn.onmouseenter = function () { this.style.transform = 'scale(1.08)'; };
     bellBtn.onmouseleave = function () { this.style.transform = 'scale(1)'; };
 
@@ -283,12 +319,13 @@
     }
 
     list.innerHTML = history.map(function (item) {
+      var itemIcon = resolveIcon(item.icon);
       var bannerHtml = item.image 
         ? '<img src="' + item.image + '" style="width:100%;height:100px;object-fit:cover;border-radius:10px;margin-top:8px;" alt="Banner">' 
         : '';
 
       return '<div class="wp-inbox-item" style="padding:14px 16px;margin-bottom:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:14px;cursor:pointer;display:flex;gap:14px;align-items:flex-start;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);" onclick="window.open(\'' + (item.url || '/') + '\',\'_blank\')">' +
-        '<img src="' + item.icon + '" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.05);box-shadow:0 4px 10px rgba(0,0,0,0.3);" alt="icon">' +
+        '<img src="' + itemIcon + '" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.05);box-shadow:0 4px 10px rgba(0,0,0,0.3);" onerror="this.src=\'/test/bell.svg\'" alt="icon">' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
             '<div style="font-size:14px;font-weight:700;color:#fff;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.title + '</div>' +
@@ -326,6 +363,8 @@
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
     var title = n.title || 'Thanks For Subscribing';
+    var iconToUse = resolveIcon(n.icon);
+
     var buttons = Array.isArray(n.buttons)
       ? n.buttons
       : (Array.isArray(n.actions) ? n.actions : [
@@ -335,8 +374,8 @@
 
     var options = {
       body: n.body || 'You Will Receive Updates Even When Website Is Closed',
-      icon: n.icon || '/test/bell.svg',
-      badge: n.badge || n.icon || '/test/bell.svg',
+      icon: iconToUse,
+      badge: n.badge || iconToUse,
       image: n.image || undefined,
       data: n,
       tag: n.campaign_id || 'push-' + Date.now(),
@@ -385,9 +424,8 @@
       ? '<img src="' + n.image + '" style="width:100%;max-height:150px;object-fit:cover;border-radius:10px;margin-bottom:6px;" alt="Banner">'
       : '';
 
-    var iconHtml = n.icon
-      ? '<img src="' + n.icon + '" width="40" height="40" style="border-radius:10px;object-fit:cover;flex-shrink:0" alt="Logo">'
-      : '<div style="width:40px;height:40px;border-radius:10px;background:rgba(99,102,241,0.2);color:#818cf8;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px"><i class="bi bi-bell-fill"></i></div>';
+    var iconToUse = resolveIcon(n.icon);
+    var iconHtml = '<img src="' + iconToUse + '" width="40" height="40" style="border-radius:10px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.05);" onerror="this.src=\'/test/bell.svg\'" alt="Logo">';
 
     var headerRow = document.createElement('div');
     headerRow.style.cssText = 'display:flex;gap:12px;align-items:flex-start;';
@@ -496,16 +534,17 @@
       initServiceWorker();
 
       if (socketInstance && socketInstance.connected) {
-        socketInstance.emit('client_subscribe', { user_id: userId, tags: tags });
+        socketInstance.emit('client_subscribe', { user_id: userId, tags: tags, icon: resolvedWebsiteLogo });
       } else {
         setTimeout(function () {
           if (socketInstance && socketInstance.connected) {
-            socketInstance.emit('client_subscribe', { user_id: userId, tags: tags });
+            socketInstance.emit('client_subscribe', { user_id: userId, tags: tags, icon: resolvedWebsiteLogo });
           } else {
             handleIncomingNotification({
               title: 'Thanks For Subscribing',
               body: 'You Will Receive Updates Even When Website Is Closed',
-              url: '/'
+              url: '/',
+              icon: resolvedWebsiteLogo
             });
           }
         }, 500);
@@ -522,6 +561,7 @@
       title: 'Update',
       body: 'New notification',
       url: '/',
+      icon: resolveIcon(options && options.icon),
       target: 'all'
     }, options);
 
@@ -537,8 +577,24 @@
     }
   }
 
+  // Developer Configuration & Customization API
+  function configure(options) {
+    if (!options) return;
+    if (options.icon) resolvedWebsiteLogo = options.icon;
+    if (options.theme) themeColor = options.theme;
+    if (options.sound !== undefined) soundEnabled = Boolean(options.sound);
+    if (options.siteKey) KEY = options.siteKey;
+
+    var bellBtn = document.getElementById('webpush-bell-button');
+    if (bellBtn && options.theme) {
+      bellBtn.style.background = 'linear-gradient(135deg, ' + options.theme + ' 0%, #7c3aed 100%)';
+    }
+  }
+
   // Public Developer API
   window.WebPush = {
+    configure: configure,
+    config: configure,
     subscribe: subscribe,
     notify: handleIncomingNotification,
     showNotification: handleIncomingNotification,
@@ -549,7 +605,8 @@
     closeInbox: closeInboxModal,
     clearInbox: clearHistory,
     getSocket: function () { return socketInstance; },
-    getSiteKey: function () { return KEY; }
+    getSiteKey: function () { return KEY; },
+    getWebsiteLogo: function () { return resolvedWebsiteLogo; }
   };
 
   ensureStylesAndIcons();

@@ -68,11 +68,26 @@ curl -X POST https://web-push.shahil-codex.xyz/api/v1/notify \
 
 ## 🛠️ Built-in Capabilities
 
+- **Smart Icon Resolution**: Automatically uses the website's favicon or logo (`apple-touch-icon`, `shortcut icon`, `/favicon.ico`) if the notification icon is omitted.
+- **Developer Customization API**: Change theme colors, brand icons, and sound presets via `WebPush.configure()`.
+- **Half-Screen Drawer**: Smooth bottom sheet / center modal with backdrop blur.
 - **Site-Isolated Channels**: Notifications stay confined to the website that sent them.
-- **Floating Bell Inbox**: Built-in slide-out notification drawer with unread counter.
 - **Web Audio Chimes**: 4 synthesized sound alerts (`chime`, `coin`, `alert`, `success`).
 - **Interactive Action Buttons**: Customizable system `[Close]` and `[Open ↗]` buttons.
 - **Targeting Modes**: Broadcast to `"all"`, `"user:<id>"`, `"tag:<name>"`, or `"self"`.
+
+---
+
+## 🎨 Developer Customization
+
+```javascript
+// Configure brand logo, theme color, and audio preferences
+WebPush.configure({
+  icon: 'https://mywebsite.com/logo.png', // Fallback for all notifications
+  theme: '#4f46e5',                       // Brand accent color
+  sound: true                             // Web Audio chimes
+});
+```
 
 ---
 
@@ -82,6 +97,7 @@ curl -X POST https://web-push.shahil-codex.xyz/api/v1/notify \
 - **Admin Dashboard**: [https://web-push.shahil-codex.xyz/admin/](https://web-push.shahil-codex.xyz/admin/)
 - **Client SDK Script**: [https://web-push.shahil-codex.xyz/sdk.js](https://web-push.shahil-codex.xyz/sdk.js)
 - **API Documentation**: [https://web-push.shahil-codex.xyz/API_DOCS.md](https://web-push.shahil-codex.xyz/API_DOCS.md)
+- **Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 

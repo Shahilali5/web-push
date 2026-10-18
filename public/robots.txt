@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /test/
+Allow: /admin/
+Allow: /sdk.js
+Allow: /API_DOCS.md
+
+# Sitemaps
+Sitemap: https://web-push.shahil-codex.xyz/sitemap.xml

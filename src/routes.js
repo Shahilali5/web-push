@@ -3,6 +3,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { queue } = require('./queue');
 const { broadcastToLargeAudience } = require('./batchBroadcaster');
+const { scheduleNotification, cancelScheduledNotification, listScheduledNotifications } = require('./scheduler');
 
 const r = express.Router();
 const pub = rateLimit({ windowMs: 60_000, limit: 120 });
@@ -24,7 +25,8 @@ const handleCustomNotify = wrap(async (req, res) => {
     buttons,
     actions,
     badge,
-    data = {}
+    data = {},
+    scheduled_at
   } = req.body || {};
 
   if (!title || !body) {
@@ -57,6 +59,27 @@ const handleCustomNotify = wrap(async (req, res) => {
   };
 
   const io = req.app.get('io');
+
+  // If scheduled for later by the Agent
+  if (scheduled_at && new Date(scheduled_at).getTime() > Date.now()) {
+    const jobInfo = scheduleNotification('job-' + payload.campaign_id, scheduled_at, async () => {
+      if (io) {
+        if (target === 'all') {
+          await broadcastToLargeAudience(io, 'site:' + siteKey + ':all', payload);
+        } else {
+          io.to(target).emit('notify', payload);
+        }
+      }
+    });
+    return res.json({
+      success: true,
+      scheduled: true,
+      scheduled_at: jobInfo.scheduled_at,
+      delayMs: jobInfo.delayMs,
+      payload
+    });
+  }
+
   let broadcastResult = null;
 
   if (io) {

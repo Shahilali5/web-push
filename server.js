@@ -13,9 +13,15 @@ app.use(express.json({ limit: '100kb' }));
 app.use('/api', require('./src/routes'));
 app.get('/sdk.js', (req, res) => res.sendFile(path.join(__dirname, 'public/sdk.js')));
 app.get('/sw.js', (req, res) => res.sendFile(path.join(__dirname, 'public/sw.js')));
+app.get('/robots.txt', (req, res) => res.sendFile(path.join(__dirname, 'public/robots.txt')));
+app.get('/sitemap.xml', (req, res) => {
+  res.header('Content-Type', 'application/xml');
+  res.sendFile(path.join(__dirname, 'public/sitemap.xml'));
+});
 app.get('/API_DOCS.md', (req, res) => res.sendFile(path.join(__dirname, 'API_DOCS.md')));
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 app.use('/test', express.static(path.join(__dirname, 'public/test')));
+app.get('/', (req, res) => res.redirect('/test/'));
 
 const { broadcastToLargeAudience } = require('./src/batchBroadcaster');
 

@@ -111,7 +111,7 @@ Include the CDN script:
 | `WebPush.subscribe()` | none | Prompts user for browser notification permission |
 | `WebPush.showNotification(payload)` | `object` | Displays dual OS notification + toast |
 | `WebPush.playSound(preset)` | `'chime'` \| `'coin'` \| `'alert'` \| `'success'` | Synthesizes an audio alert |
-| `WebPush.openInbox()` | none | Opens the Razorpay-style half-screen notification drawer modal |
+| `WebPush.openInbox()` | none | Opens the smooth half-screen notification drawer modal |
 | `WebPush.closeInbox()` | none | Closes the notification drawer modal |
 | `WebPush.clearInbox()` | none | Clears stored notification history |
 | `WebPush.send(payload)` | `object` | Sends push notification directly from frontend JS |
