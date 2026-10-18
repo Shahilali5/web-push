@@ -14,6 +14,7 @@ app.use('/api', require('./src/routes'));
 app.get('/sdk.js', (req, res) => res.sendFile(path.join(__dirname, 'public/sdk.js')));
 app.get('/sw.js', (req, res) => res.sendFile(path.join(__dirname, 'public/sw.js')));
 app.get('/firebase-messaging-sw.js', (req, res) => res.sendFile(path.join(__dirname, 'public/firebase-messaging-sw.js')));
+app.get('/API_DOCS.md', (req, res) => res.sendFile(path.join(__dirname, 'API_DOCS.md')));
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 app.use('/test', express.static(path.join(__dirname, 'public/test')));
 

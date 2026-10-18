@@ -27,7 +27,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 
 <div id="app" style="display:none">
 <header><b>🔔 Push Dashboard <span style="font-size:11px;opacity:0.6;font-weight:normal;">(Port 3050)</span></b><span id="online">● 0 online</span>
-<nav><button data-t="ov" class="on">Overview</button><button data-t="send">Send</button><button data-t="camp">Campaigns</button><button data-t="subs">Subscribers</button><button data-t="build">Code Builder</button><a href="/test" class="btn" style="text-decoration:none;display:inline-block;" target="_blank">🧪 Test Web Lab ↗</a></nav></header>
+<nav><button data-t="ov" class="on">Overview</button><button data-t="send">Send</button><button data-t="camp">Campaigns</button><button data-t="subs">Subscribers</button><button data-t="build">Code Builder</button><button data-t="api">API Docs</button><a href="/test" class="btn" style="text-decoration:none;display:inline-block;" target="_blank">🧪 Test Web Lab ↗</a></nav></header>
 <main>
 <section id="ov" class="tab on"><div class="grid" id="stats"></div><div class="card"><b>Live activity</b><div id="feed"></div></div></section>
 
@@ -62,6 +62,45 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 <button class="btn" onclick="cp('o_sw')">Copy</button> <button class="btn" onclick="dl()">Download</button>
 <label>3) Server-side trigger (PHP)</label><textarea id="o_php" readonly></textarea>
 <button class="btn" onclick="cp('o_php')">Copy</button>
+</div></div></div></section>
+
+<section id="api" class="tab"><div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+  <b>📖 REST API Reference &amp; Universal Integration</b>
+  <a href="/API_DOCS.md" target="_blank" class="btn" style="text-decoration:none;">📄 Open API_DOCS.md ↗</a>
+</div>
+<div class="row"><div>
+  <label>Universal Endpoint</label>
+  <input value="POST https://web-push.shahil-codex.xyz/api/v1/notify" readonly>
+  <label>Required Headers</label>
+  <textarea readonly style="min-height:55px;font-family:ui-monospace,monospace;">Content-Type: application/json
+x-site-key: change-me-site</textarea>
+  <label>Customizable Payload Schema</label>
+  <textarea readonly style="min-height:160px;font-family:ui-monospace,monospace;">{
+  "title": "Special Deal Unlocked! 🎉",
+  "body": "Get 40% discount today only.",
+  "url": "https://yoursite.com/deals",
+  "icon": "https://yoursite.com/logo.png",
+  "target": "all",
+  "buttons": [
+    { "action": "close", "title": "Dismiss", "type": "secondary" },
+    { "action": "open", "title": "Claim Offer ↗", "url": "/deals", "type": "primary" }
+  ]
+}</textarea>
+</div><div>
+  <label>1) cURL Request</label>
+  <textarea id="api_curl" readonly style="min-height:90px;font-family:ui-monospace,monospace;">curl -X POST https://web-push.shahil-codex.xyz/api/v1/notify \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Order Shipped 📦","body":"Your package is on its way","url":"/orders"}'</textarea>
+  <button class="btn" onclick="cp('api_curl')">Copy cURL</button>
+
+  <label style="margin-top:10px;">2) Node.js / JavaScript Fetch</label>
+  <textarea id="api_js" readonly style="min-height:90px;font-family:ui-monospace,monospace;">fetch('https://web-push.shahil-codex.xyz/api/v1/notify', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ title: 'Welcome', body: 'Thanks for subscribing', url: '/' })
+});</textarea>
+  <button class="btn" onclick="cp('api_js')">Copy Node.js</button>
 </div></div></div></section>
 </main></div>
 
