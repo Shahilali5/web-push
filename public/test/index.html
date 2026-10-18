@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🔔 WebPush — Open Source Socket.IO Push Notification Engine</title>
+  <link rel="icon" href="/test/bell.svg">
+  <!-- Bootstrap Icons CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --bg: #070a12;
+      --card-bg: rgba(15, 23, 42, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-glow: rgba(99, 102, 241, 0.35);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-glow: rgba(99, 102, 241, 0.4);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.3);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --code-bg: #030712;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      background-image: 
+        radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.14) 0%, transparent 40%),
+        radial-gradient(circle at 90% 15%, rgba(16, 185, 129, 0.1) 0%, transparent 35%),
+        radial-gradient(circle at 50% 90%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.5;
+      padding: 30px 18px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--card-border);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #fff;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .author-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .author-badge:hover {
+      background: rgba(99, 102, 241, 0.3);
+      color: #fff;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s;
+    }
+    .card:hover {
+      border-color: var(--card-border-glow);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Status Grid */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+    }
+
+    .status-box {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .status-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-val {
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      width: fit-content;
+    }
+    .badge-prompt {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .badge-granted {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      box-shadow: 0 0 15px var(--success-glow);
+    }
+    .badge-denied {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    /* Live Interactive Simulator */
+    .simulator-wrapper {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 22px;
+      margin-top: 18px;
+    }
+
+    .simulator-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sim-card {
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 520px;
+      animation: floatIn 0.3s ease-out;
+    }
+
+    @keyframes floatIn {
+      from { transform: translateY(-8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .sim-banner {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 10px;
+      display: none;
+    }
+
+    .sim-main-row {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .sim-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .sim-heading {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+
+    .sim-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
+    .sim-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .btn-sim {
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+    .btn-sim-primary {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+    .btn-sim-primary:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+    .btn-sim-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .btn-sim-secondary:hover {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+    }
+
+    /* Buttons */
+    .btn {
+      appearance: none;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      outline: none;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent);
+    }
+    .btn-primary {
+      background: #4f46e5;
+      color: #ffffff;
+      border-color: #4f46e5;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      background: #4338ca;
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+      transform: translateY(-1px);
+    }
+    .btn-success {
+      background: #10b981;
+      color: #ffffff;
+      border-color: #10b981;
+      box-shadow: 0 4px 16px var(--success-glow);
+    }
+    .btn-success:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    /* Custom Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    /* Presets Row */
+    .presets-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    /* Code Snippet Box */
+    .code-box {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #a5b4fc;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      position: relative;
+    }
+
+    /* Logs */
+    .log-box {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      height: 280px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      line-height: 1.4;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      word-break: break-word;
+    }
+    .log-time {
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .log-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tag-info { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+    .tag-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .tag-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tag-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .tag-click { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+
+    code {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #818cf8;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon"><i class="bi bi-bell-fill"></i></div>
+      <div>
+        <h1>WebPush Engine <span style="font-size:13px; font-weight:normal; opacity:0.7;">v2.0</span></h1>
+        <div class="brand-subtitle">Open Source • High-Performance Socket.IO • Zero Firebase</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a href="https://github.com/shahilali5" target="_blank" class="author-badge">
+        <i class="bi bi-github"></i> Lead Contributor: shahilali5
+      </a>
+      <span class="chip"><i class="bi bi-check2-circle"></i> Port 3050</span>
+      <button class="btn btn-sm" id="btnAudioToggle" onclick="toggleAudio()">
+        <i class="bi bi-volume-up-fill"></i> Chime: ON
+      </button>
+      <a href="/admin" class="btn btn-sm"><i class="bi bi-speedometer2"></i> Admin</a>
+    </div>
+  </header>
+
+  <!-- Status Card -->
+  <section class="card">
+    <div class="card-title">
+      <span><i class="bi bi-cpu-fill"></i> System &amp; Stream Diagnostics</span>
+      <button class="btn btn-sm" onclick="checkState()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+    <div class="status-grid">
+      <div class="status-box">
+        <span class="status-label"><i class="bi bi-shield-lock-fill"></i> Browser Permission</span>
+        <div id="permBadge" class="badge badge-prompt">Prompt (Default)</div>
+      </div>
+      <div class="status-box">
+        <span class="status-label"><i class="bi bi-broadcast"></i> Socket.IO Live Stream</span>
+        <span id="socketStatus" class="status-val" style="color: #f59e0b;">Connecting... 🟡</span>
+      </div>
+      <div class="status-box">
+        <span class="status-label"><i class="bi bi-window-stack"></i> Service Worker &amp; Actions</span>
+        <span id="swStatus" class="status-val">Checking...</span>
+      </div>
+      <div class="status-box">
+        <span class="status-label"><i class="bi bi-hdd-network-fill"></i> Active Port</span>
+        <span class="status-val"><code>http://localhost:3050</code></span>
+      </div>
+    </div>
+
+    <!-- Live Interactive Simulator -->
+    <div class="simulator-wrapper">
+      <div class="simulator-title"><i class="bi bi-phone-fill"></i> Live Notification Banner Simulation</div>
+      <div class="sim-card" id="simCard">
+        <img id="simBanner" class="sim-banner" src="" alt="Banner">
+        <div class="sim-main-row">
+          <img id="simAvatar" class="sim-avatar" src="/test/bell.svg" alt="Logo">
+          <div style="flex:1; min-width:0;">
+            <div id="simTitle" class="sim-heading">Thanks For Subscribing</div>
+            <div id="simDesc" class="sim-desc">You Will Receive Updates Even When Website Is Closed</div>
+          </div>
+        </div>
+        <div class="sim-actions" id="simActions">
+          <button class="btn-sim btn-sim-secondary" onclick="simulateAction('close')">
+            <i class="bi bi-x-lg"></i> Close
+          </button>
+          <button class="btn-sim btn-sim-primary" onclick="simulateAction('open')">
+            <i class="bi bi-box-arrow-up-right"></i> Open ↗
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Allow / Trigger Actions -->
+  <section class="card">
+    <div class="card-title">
+      <span><i class="bi bi-lightning-charge-fill"></i> Quick Actions</span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+      <button id="btnAllow" class="btn btn-primary" onclick="handleAllow()">
+        <i class="bi bi-bell-fill"></i> Allow Notifications (Subscribe &amp; Get Welcome Push)
+      </button>
+
+      <button class="btn btn-success" onclick="triggerWelcomeImmediate()">
+        <i class="bi bi-stars"></i> Test Welcome Notification Now
+      </button>
+    </div>
+  </section>
+
+  <!-- Full Customization Panel (Add in own project) -->
+  <section class="card">
+    <div class="card-title">
+      <span><i class="bi bi-sliders"></i> Full Notification Customizer &amp; Project Integration API</span>
+      <span style="font-size: 12px; color: var(--text-muted);"><i class="bi bi-code-slash"></i> Universal REST + Socket</span>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label><i class="bi bi-fonts"></i> Title</label>
+        <input type="text" id="custTitle" value="Special Offer Just For You! 🎉" oninput="syncPreview()">
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-link-45deg"></i> Target Destination URL</label>
+        <input type="text" id="custUrl" value="/test/" oninput="syncPreview()">
+      </div>
+
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label><i class="bi bi-chat-left-text-fill"></i> Description / Message Body</label>
+        <input type="text" id="custBody" value="Your exclusive 40% discount coupon is waiting. Tap to redeem!" oninput="syncPreview()">
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-image"></i> Logo / Icon URL</label>
+        <input type="text" id="custIcon" value="/test/bell.svg" oninput="syncPreview()">
+        <div class="presets-row">
+          <button class="btn btn-sm" onclick="setPreset('icon', '/test/bell.svg')">🔔 Bell</button>
+          <button class="btn btn-sm" onclick="setPreset('icon', 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png')">🎁 Gift</button>
+          <button class="btn btn-sm" onclick="setPreset('icon', 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png')">🛒 Cart</button>
+          <button class="btn btn-sm" onclick="setPreset('icon', 'https://cdn-icons-png.flaticon.com/512/1827/1827349.png')">⚡ Alert</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-card-image"></i> Banner Image URL (Optional)</label>
+        <input type="text" id="custBanner" placeholder="e.g. https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600" oninput="syncPreview()">
+      </div>
+
+      <!-- Action Button 1 Customizer -->
+      <div class="form-group">
+        <label><i class="bi bi-toggle-on"></i> Button 1 (Label &amp; Action)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="btn1Title" value="Dismiss" placeholder="Title" oninput="syncPreview()">
+          <input type="text" id="btn1Action" value="close" style="max-width:110px;" placeholder="Action" oninput="syncPreview()">
+        </div>
+      </div>
+
+      <!-- Action Button 2 Customizer -->
+      <div class="form-group">
+        <label><i class="bi bi-toggle-on"></i> Button 2 (Label &amp; Action)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="btn2Title" value="Claim Discount ↗" placeholder="Title" oninput="syncPreview()">
+          <input type="text" id="btn2Action" value="open" style="max-width:110px;" placeholder="Action" oninput="syncPreview()">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap;">
+      <button class="btn btn-primary" onclick="dispatchCustomNotification()">
+        <i class="bi bi-send-fill"></i> Dispatch via API &amp; Socket.IO
+      </button>
+      <button class="btn" onclick="copyCurlSnippet()">
+        <i class="bi bi-clipboard-check"></i> Copy cURL API Snippet
+      </button>
+    </div>
+
+    <!-- cURL integration snippet -->
+    <div style="margin-top: 16px;">
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;"><i class="bi bi-terminal-fill"></i> Copy-Paste API Call for Any Backend (Node.js, PHP, Python, Go):</div>
+      <div class="code-box" id="curlBox"></div>
+    </div>
+  </section>
+
+  <!-- Live Diagnostics Event Log -->
+  <section class="card">
+    <div class="card-title">
+      <span><i class="bi bi-activity"></i> Live Diagnostics Event Stream</span>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-sm" onclick="clearLogs()"><i class="bi bi-trash"></i> Clear</button>
+        <button class="btn btn-sm" onclick="copyLogs()"><i class="bi bi-copy"></i> Copy Logs</button>
+      </div>
+    </div>
+    <div id="logBox" class="log-box"></div>
+  </section>
+</div>
+
+<!-- Standalone Socket.IO Push SDK -->
+<script src="/sdk.js" data-site-key="change-me-site" data-auto="false" data-sw="/sw.js"></script>
+
+<script>
+  let logCounter = 0;
+  let audioEnabled = true;
+  const logBox = document.getElementById('logBox');
+
+  // Web Audio API Synthesizer (Chime)
+  function playChime() {
+    if (!audioEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc2.frequency.setValueAtTime(880.00, ctx.currentTime + 0.08);
+
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(ctx.currentTime);
+      osc2.start(ctx.currentTime + 0.08);
+      osc1.stop(ctx.currentTime + 0.45);
+      osc2.stop(ctx.currentTime + 0.45);
+    } catch (_) {}
+  }
+
+  function toggleAudio() {
+    audioEnabled = !audioEnabled;
+    document.getElementById('btnAudioToggle').innerHTML = audioEnabled
+      ? '<i class="bi bi-volume-up-fill"></i> Chime: ON'
+      : '<i class="bi bi-volume-mute-fill"></i> Chime: OFF';
+    addLog(`Notification chime audio: ${audioEnabled ? 'ENABLED' : 'MUTED'}`, 'info');
+  }
+
+  function addLog(message, type = 'info') {
+    logCounter++;
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString() + '.' + String(now.getMilliseconds()).padStart(3, '0');
+
+    let tagClass = 'tag-info';
+    let tagLabel = 'INFO';
+    if (type === 'success') { tagClass = 'tag-success'; tagLabel = 'SUCCESS'; }
+    else if (type === 'warn') { tagClass = 'tag-warn'; tagLabel = 'WARN'; }
+    else if (type === 'danger') { tagClass = 'tag-danger'; tagLabel = 'ERROR'; }
+    else if (type === 'click') { tagClass = 'tag-click'; tagLabel = 'USER-ACTION'; }
+
+    entry.innerHTML = `
+      <span class="log-time">${timeStr}</span>
+      <span class="log-tag ${tagClass}">[${tagLabel}]</span>
+      <span class="log-text">${escapeHtml(message)}</span>
+    `;
+
+    logBox.appendChild(entry);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>'"]/g, tag => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag] || tag));
+  }
+
+  function clearLogs() {
+    logBox.innerHTML = '';
+    logCounter = 0;
+    addLog('Diagnostics log cleared', 'info');
+  }
+
+  function copyLogs() {
+    const text = Array.from(logBox.querySelectorAll('.log-entry')).map(e => e.innerText).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      addLog('All logs copied to clipboard', 'success');
+    }).catch(err => {
+      addLog('Copy failed: ' + err.message, 'warn');
+    });
+  }
+
+  function checkState() {
+    const permBadge = document.getElementById('permBadge');
+    const swStatus = document.getElementById('swStatus');
+    const socketStatus = document.getElementById('socketStatus');
+
+    if (!('Notification' in window)) {
+      permBadge.className = 'badge badge-denied';
+      permBadge.textContent = 'Unsupported ❌';
+      return;
+    }
+
+    const state = Notification.permission;
+    if (state === 'granted') {
+      permBadge.className = 'badge badge-granted';
+      permBadge.textContent = 'Granted ✅';
+    } else if (state === 'denied') {
+      permBadge.className = 'badge badge-denied';
+      permBadge.textContent = 'Denied ❌';
+    } else {
+      permBadge.className = 'badge badge-prompt';
+      permBadge.textContent = 'Prompt (Default)';
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        swStatus.innerHTML = reg ? 'Active (/sw.js) ✅' : 'Supported (Ready)';
+      }).catch(() => {
+        swStatus.textContent = 'Supported';
+      });
+    }
+
+    const sock = window.WebPush && window.WebPush.getSocket ? window.WebPush.getSocket() : null;
+    if (sock && sock.connected) {
+      socketStatus.innerHTML = '<span style="color:#10b981;">Online (ID: ' + sock.id.slice(0, 6) + '...) 🟢</span>';
+    }
+  }
+
+  // Allow Notifications Button
+  async function handleAllow() {
+    addLog('User clicked [Allow Notifications]', 'info');
+    if (!('Notification' in window)) {
+      addLog('Notification API is unsupported on this browser', 'danger');
+      return;
+    }
+
+    try {
+      if (window.WebPush && typeof window.WebPush.subscribe === 'function') {
+        addLog('Requesting system permission and subscribing via Socket.IO...', 'info');
+        const granted = await window.WebPush.subscribe();
+        checkState();
+        if (granted) {
+          playChime();
+          addLog('Permission granted! Welcome notification triggered from server.', 'success');
+        } else {
+          addLog('Permission outcome: ' + Notification.permission, 'warn');
+        }
+      }
+    } catch (err) {
+      addLog('Subscription error: ' + err.message, 'danger');
+    }
+  }
+
+  // Welcome Trigger
+  function triggerWelcomeImmediate() {
+    addLog('Triggering Welcome Notification test...', 'info');
+    playChime();
+    const welcome = {
+      title: 'Thanks For Subscribing',
+      body: 'You Will Receive Updates Even When Website Is Closed',
+      url: '/test/',
+      icon: '/test/bell.svg',
+      buttons: [
+        { action: 'close', title: 'Close', icon: 'bi-x-lg', type: 'secondary' },
+        { action: 'open', title: 'Open ↗', url: '/test/', icon: 'bi-box-arrow-up-right', type: 'primary' }
+      ]
+    };
+    if (window.WebPush && typeof window.WebPush.showNotification === 'function') {
+      window.WebPush.showNotification(welcome);
+      addLog('Welcome Notification displayed with [Close] and [Open] buttons', 'success');
+    }
+  }
+
+  // Live Interactive Preview Sync
+  function syncPreview() {
+    const title = document.getElementById('custTitle').value || 'Notification Title';
+    const body = document.getElementById('custBody').value || 'Description body';
+    const icon = document.getElementById('custIcon').value || '/test/bell.svg';
+    const banner = document.getElementById('custBanner').value.trim();
+    const btn1Title = document.getElementById('btn1Title').value || 'Close';
+    const btn2Title = document.getElementById('btn2Title').value || 'Open';
+
+    document.getElementById('simTitle').textContent = title;
+    document.getElementById('simDesc').textContent = body;
+    document.getElementById('simAvatar').src = icon;
+
+    const bannerEl = document.getElementById('simBanner');
+    if (banner) {
+      bannerEl.src = banner;
+      bannerEl.style.display = 'block';
+    } else {
+      bannerEl.style.display = 'none';
+    }
+
+    const actionsContainer = document.getElementById('simActions');
+    actionsContainer.innerHTML = `
+      <button class="btn-sim btn-sim-secondary" onclick="simulateAction('close')">
+        <i class="bi bi-x-lg"></i> ${escapeHtml(btn1Title)}
+      </button>
+      <button class="btn-sim btn-sim-primary" onclick="simulateAction('open')">
+        <i class="bi bi-box-arrow-up-right"></i> ${escapeHtml(btn2Title)}
+      </button>
+    `;
+
+    updateCurlSnippet();
+  }
+
+  function setPreset(type, val) {
+    if (type === 'icon') {
+      document.getElementById('custIcon').value = val;
+    }
+    syncPreview();
+  }
+
+  function simulateAction(action) {
+    if (action === 'close') {
+      addLog('User clicked Button 1: [Close] (Notification dismissed)', 'click');
+    } else {
+      addLog(`User clicked Button 2: [Open] (Navigating to: ${document.getElementById('custUrl').value})`, 'click');
+      window.open(document.getElementById('custUrl').value, '_blank');
+    }
+  }
+
+  // Dispatch Custom Notification via REST API & Socket.IO
+  async function dispatchCustomNotification() {
+    const payload = {
+      title: document.getElementById('custTitle').value.trim() || 'Notice',
+      body: document.getElementById('custBody').value.trim() || 'New update received',
+      url: document.getElementById('custUrl').value.trim() || '/test/',
+      icon: document.getElementById('custIcon').value.trim() || '/test/bell.svg',
+      image: document.getElementById('custBanner').value.trim() || null,
+      target: 'all',
+      buttons: [
+        { action: document.getElementById('btn1Action').value.trim() || 'close', title: document.getElementById('btn1Title').value.trim() || 'Close', type: 'secondary', icon: 'bi-x-lg' },
+        { action: document.getElementById('btn2Action').value.trim() || 'open', title: document.getElementById('btn2Title').value.trim() || 'Open ↗', url: document.getElementById('custUrl').value.trim() || '/test/', type: 'primary', icon: 'bi-box-arrow-up-right' }
+      ]
+    };
+
+    addLog(`Sending custom notification payload to /api/v1/notify: "${payload.title}"`, 'info');
+
+    try {
+      const res = await fetch('/api/v1/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        addLog(`✓ Successfully dispatched custom notification to all clients via API!`, 'success');
+      } else {
+        addLog(`API dispatch note: ${data.error || 'Check server'}`, 'warn');
+      }
+    } catch (e) {
+      addLog(`Direct socket fallback: ${e.message}`, 'warn');
+      if (window.WebPush && typeof window.WebPush.send === 'function') {
+        window.WebPush.send(payload);
+      }
+    }
+  }
+
+  function updateCurlSnippet() {
+    const title = document.getElementById('custTitle').value.replace(/"/g, '\\"');
+    const body = document.getElementById('custBody').value.replace(/"/g, '\\"');
+    const url = document.getElementById('custUrl').value;
+    const icon = document.getElementById('custIcon').value;
+    const btn1 = document.getElementById('btn1Title').value;
+    const btn2 = document.getElementById('btn2Title').value;
+
+    const curl = `curl -X POST http://localhost:3050/api/v1/notify \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "title": "${title}",
+    "body": "${body}",
+    "url": "${url}",
+    "icon": "${icon}",
+    "target": "all",
+    "buttons": [
+      { "action": "close", "title": "${btn1}", "type": "secondary" },
+      { "action": "open", "title": "${btn2}", "url": "${url}", "type": "primary" }
+    ]
+  }'`;
+    document.getElementById('curlBox').textContent = curl;
+  }
+
+  function copyCurlSnippet() {
+    navigator.clipboard.writeText(document.getElementById('curlBox').textContent).then(() => {
+      addLog('cURL API snippet copied to clipboard! Ready to paste into your backend.', 'success');
+    });
+  }
+
+  // SDK Events
+  window.addEventListener('webpush:connected', function(e) {
+    addLog(`Socket.IO live stream established (Socket ID: ${e.detail.id})`, 'success');
+    checkState();
+  });
+
+  window.addEventListener('webpush:permission', function(e) {
+    addLog(`Notification permission updated: ${e.detail.permission}`, e.detail.permission === 'granted' ? 'success' : 'warn');
+    checkState();
+  });
+
+  window.addEventListener('webpush:displayed', function(e) {
+    const d = e.detail || {};
+    playChime();
+    addLog(`Notification arrived on screen: "${d.title}"`, 'info');
+  });
+
+  window.addEventListener('webpush:click', function(e) {
+    const d = e.detail || {};
+    if (d.action === 'close') {
+      addLog('User clicked button: [Close] (Toast dismissed)', 'click');
+    } else {
+      addLog(`User clicked action: [${d.action || 'open'}] (Destination: ${d.url || d.button?.url || '/'})`, 'click');
+    }
+  });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    checkState();
+    syncPreview();
+    addLog('WebPush Engine Lab initialized on Port 3050', 'info');
+    setInterval(checkState, 3000);
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Push Dashboard</title>
+<style>
+:root{--bg:#0b1020;--card:#151b2e;--line:#242c45;--tx:#e6e9f2;--mut:#8b93ad;--ac:#6366f1}
+@media(prefers-color-scheme:light){:root{--bg:#f4f6fb;--card:#fff;--line:#e2e6f0;--tx:#111827;--mut:#6b7280}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px system-ui,sans-serif}
+header{display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header b{margin-right:auto}
+nav button,.btn{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+nav button.on,.btn.p{background:var(--ac);border-color:var(--ac);color:#fff}
+main{padding:16px;max-width:1100px;margin:auto}.tab{display:none}.tab.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.stat b{font-size:24px;display:block}.stat span{color:var(--mut)}
+label{display:block;margin:10px 0 4px;color:var(--mut)}
+input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:90px;font-family:ui-monospace,monospace;font-size:12px}
+table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.row{grid-template-columns:1fr}}
+#feed div{padding:6px 0;border-bottom:1px solid var(--line);color:var(--mut)}
+.bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac)}
+#login{max-width:340px;margin:20vh auto}
+</style></head><body>
+<div id="login" class="card"><b>Admin login</b><label>Admin key</label><input id="key" type="password"><br><br><button class="btn p" onclick="login()">Enter</button></div>
+
+<div id="app" style="display:none">
+<header><b>🔔 Push Dashboard <span style="font-size:11px;opacity:0.6;font-weight:normal;">(Port 3050)</span></b><span id="online">● 0 online</span>
+<nav><button data-t="ov" class="on">Overview</button><button data-t="send">Send</button><button data-t="camp">Campaigns</button><button data-t="subs">Subscribers</button><button data-t="build">Code Builder</button><a href="/test" class="btn" style="text-decoration:none;display:inline-block;" target="_blank">🧪 Test Web Lab ↗</a></nav></header>
+<main>
+<section id="ov" class="tab on"><div class="grid" id="stats"></div><div class="card"><b>Live activity</b><div id="feed"></div></div></section>
+
+<section id="send" class="tab"><div class="card"><div class="row"><div>
+<label>Template</label><select id="tpl" onchange="useTpl()"><option value="">— none —</option></select>
+<label>Title</label><input id="title" maxlength="200">
+<label>Body</label><textarea id="body" style="font-family:inherit;font-size:14px" maxlength="500"></textarea>
+<label>Icon URL</label><input id="icon"><label>Image URL</label><input id="image"><label>Click URL</label><input id="url" placeholder="https://yoursite.com/page">
+</div><div>
+<label>Channel</label><select id="channel"><option value="push">Push (works when site closed)</option><option value="live">Live toast (visitors online now)</option><option value="both">Both</option></select>
+<label>Target</label><select id="tkind" onchange="document.getElementById('tval').style.display=this.value=='all'?'none':'block'"><option value="all">All subscribers</option><option value="tag">Tag</option><option value="user">User ID</option></select>
+<input id="tval" placeholder="value" style="display:none;margin-top:6px">
+<label>Schedule (optional)</label><input id="sched" type="datetime-local">
+<div class="card" style="margin-top:14px"><b>Preview</b><div id="pv" style="margin-top:8px;color:var(--mut)">—</div></div>
+<button class="btn p" onclick="sendIt()">Send</button> <button class="btn" onclick="saveTpl()">Save as template</button>
+</div></div></div></section>
+
+<section id="camp" class="tab"><div class="card"><table><thead><tr><th>#</th><th>Title</th><th>Channel</th><th>Target</th><th>Status</th><th>Progress</th><th>Clicks</th><th></th></tr></thead><tbody id="ctb"></tbody></table></div></section>
+
+<section id="subs" class="tab"><div class="card"><table><thead><tr><th>#</th><th>User</th><th>Tags</th><th>Browser</th><th>Active</th><th>Joined</th></tr></thead><tbody id="stb"></tbody></table></div></section>
+
+<section id="build" class="tab"><div class="card"><div class="row"><div>
+<label>Push server URL</label><input id="b_api"><label>Site key</label><input id="b_key">
+<label>User ID (JS expression or fixed value, optional)</label><input id="b_uid" placeholder="e.g. 42 or leave empty">
+<label>Tags (comma separated)</label><input id="b_tags" placeholder="vip,hindi">
+<label>Toast position</label><select id="b_pos"><option>top-right</option><option>top-left</option><option>bottom-right</option><option>bottom-left</option></select>
+<label>Auto prompt after 3s</label><select id="b_auto"><option value="true">Yes</option><option value="false">No (call WebPush.subscribe() on a button)</option></select>
+</div><div>
+<label>1) Paste before &lt;/body&gt;</label><textarea id="o_embed" readonly></textarea>
+<button class="btn" onclick="cp('o_embed')">Copy</button>
+<label>2) Save as <code>/firebase-messaging-sw.js</code> in your website root</label><textarea id="o_sw" readonly style="min-height:150px"></textarea>
+<button class="btn" onclick="cp('o_sw')">Copy</button> <button class="btn" onclick="dl()">Download</button>
+<label>3) Server-side trigger (PHP)</label><textarea id="o_php" readonly></textarea>
+<button class="btn" onclick="cp('o_php')">Copy</button>
+</div></div></div></section>
+</main></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+let KEY='',CFG=null;const $=id=>document.getElementById(id);
+const api=(p,o={})=>fetch('/api/admin'+p,{...o,headers:{'Content-Type':'application/json','x-admin-key':KEY}}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function login(){KEY=$('key').value;try{CFG=await api('/config')}catch{return alert('Wrong key')}
+ sessionStorage.k=KEY;$('login').style.display='none';$('app').style.display='block';start()}
+if(sessionStorage.k){$('key').value=sessionStorage.k;login()}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.tab').forEach(e=>e.classList.remove('on'));b.classList.add('on');$(b.dataset.t).classList.add('on');refresh();if(b.dataset.t=='build')build()});
+
+function log(t){const d=document.createElement('div');d.textContent=new Date().toLocaleTimeString()+' — '+t;$('feed').prepend(d)}
+
+function start(){
+ const s=io('/admin',{auth:{key:KEY}});
+ s.on('online',n=>$('online').textContent='● '+n+' online');
+ s.on('progress',p=>{log('Campaign #'+p.id+' '+p.sent+'/'+p.total+' sent'+(p.failed?', '+p.failed+' failed':'')+' ['+p.status+']');if($('camp').classList.contains('on'))camps()});
+ s.on('subscriber',()=>{log('New subscriber (welcome sent)');stats()});
+ refresh();loadTpl();setInterval(()=>{if($('ov').classList.contains('on'))stats()},15000)}
+
+function refresh(){stats();if($('camp').classList.contains('on'))camps();if($('subs').classList.contains('on'))subs()}
+async function stats(){const s=await api('/stats'),q=s.queue||{};
+ const items=[['Subscribers',s.total],['Active',s.active],['New 24h',s.new24h],['Campaigns',s.campaigns],['Sent',s.sent],['Failed',s.failed],['Clicks',s.clicks],['CTR',s.sent?(s.clicks/s.sent*100).toFixed(1)+'%':'0%'],['Queue',(q.waiting||0)+(q.active||0)+(q.delayed||0)]];
+ $('stats').innerHTML=items.map(i=>`<div class="card stat"><b>${esc(i[1])}</b><span>${i[0]}</span></div>`).join('')}
+async function camps(){const r=await api('/campaigns');$('ctb').innerHTML=r.map(c=>{const pct=c.total?Math.round((c.sent+c.failed)/c.total*100):(c.status=='done'?100:0);
+ return `<tr><td>${c.id}</td><td>${esc(c.title)}</td><td>${c.channel}</td><td>${esc(c.target)}</td><td>${c.status}</td><td style="min-width:110px"><div class="bar"><i style="width:${pct}%"></i></div>${c.sent}/${c.total}</td><td>${c.clicks}</td><td>${['scheduled','queued','sending'].includes(c.status)?`<button class="btn" onclick="cancel(${c.id})">Cancel</button>`:''}</td></tr>`}).join('')}
+async function subs(){const r=await api('/subscribers');$('stb').innerHTML=r.map(x=>`<tr><td>${x.id}</td><td>${esc(x.user_id)}</td><td>${esc(JSON.stringify(x.tags||[]))}</td><td>${esc(x.browser)}</td><td>${x.active?'✅':'—'}</td><td>${new Date(x.created_at).toLocaleString()}</td></tr>`).join('')}
+async function cancel(id){await api('/campaigns/'+id+'/cancel',{method:'POST'});camps()}
+
+async function sendIt(){const kind=$('tkind').value,target=kind=='all'?'all':kind+':'+$('tval').value.trim();
+ const body={title:$('title').value,body:$('body').value,icon:$('icon').value,image:$('image').value,url:$('url').value,channel:$('channel').value,target,scheduled_at:$('sched').value?new Date($('sched').value).toISOString():undefined};
+ if(!body.title||!body.body)return alert('Title and body required');
+ try{const r=await api('/send',{method:'POST',body:JSON.stringify(body)});log('Queued campaign #'+r.campaign_id);alert('Queued #'+r.campaign_id)}catch(e){alert('Failed: '+e.message)}}
+['title','body'].forEach(i=>$(i).oninput=()=>$('pv').innerHTML='<b>'+esc($('title').value)+'</b><br>'+esc($('body').value));
+
+let TPL=[];
+async function loadTpl(){TPL=await api('/templates');$('tpl').innerHTML='<option value="">— none —</option>'+TPL.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}
+function useTpl(){const t=TPL.find(x=>x.id==$('tpl').value);if(!t)return;['title','body','icon','image','url'].forEach(k=>$(k).value=t[k]||'');$('title').oninput()}
+async function saveTpl(){const name=prompt('Template name');if(!name)return;await api('/templates',{method:'POST',body:JSON.stringify({name,title:$('title').value,body:$('body').value,icon:$('icon').value,image:$('image').value,url:$('url').value})});loadTpl()}
+
+/* ---- Code Builder ---- */
+function build(){if(!$('b_api').value){$('b_api').value=location.origin;$('b_key').value=CFG.siteKey;['b_api','b_key','b_uid','b_tags','b_pos','b_auto'].forEach(i=>$(i).oninput=build)}
+ const api_=$('b_api').value.replace(/\/$/,''),uid=$('b_uid').value.trim(),tags=$('b_tags').value.trim();
+ $('o_embed').value=`<script src="${api_}/sdk.js"\n  data-site-key="${$('b_key').value}"`+(uid?`\n  data-user-id="${uid}"`:'')+(tags?`\n  data-tags="${tags}"`:'')+`\n  data-toast="${$('b_pos').value}"\n  data-auto="${$('b_auto').value}"><\/script>`;
+ $('o_sw').value=`importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+const API='${api_}', KEY='${$('b_key').value}';
+firebase.initializeApp(${JSON.stringify(CFG.firebase)});
+const messaging = firebase.messaging();
+messaging.onBackgroundMessage(p => {
+  const d = p.data || {};
+  self.registration.showNotification(d.title, { body: d.body, icon: d.icon || undefined, image: d.image || undefined, data: d, actions: [{ action: 'open', title: 'Open' }, { action: 'close', title: 'Close' }] });
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  if (e.action === 'close') return;
+  const d = e.notification.data || {};
+  e.waitUntil((async () => {
+    try { await fetch(API + '/api/click', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-site-key': KEY }, body: JSON.stringify({ campaign_id: d.campaign_id }), keepalive: true }); } catch (_) {}
+    await clients.openWindow(d.url || '/');
+  })());
+});`;
+ $('o_php').value=`<?php
+function push_notify($title, $body, $url = '/', $target = 'all', $channel = 'both') {
+  $ch = curl_init('${api_}/api/admin/send');
+  curl_setopt_array($ch, [
+    CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'x-admin-key: YOUR_ADMIN_KEY'],
+    CURLOPT_POSTFIELDS => json_encode(compact('title','body','url','target','channel')),
+  ]);
+  return json_decode(curl_exec($ch), true);
+}
+// push_notify('New order', 'Your order is confirmed', '/orders', 'user:42');`}
+function cp(id){navigator.clipboard.writeText($(id).value)}
+function dl(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('o_sw').value]));a.download='firebase-messaging-sw.js';a.click()}
+</script></body></html>
