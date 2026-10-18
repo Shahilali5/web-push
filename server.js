@@ -13,7 +13,6 @@ app.use(express.json({ limit: '100kb' }));
 app.use('/api', require('./src/routes'));
 app.get('/sdk.js', (req, res) => res.sendFile(path.join(__dirname, 'public/sdk.js')));
 app.get('/sw.js', (req, res) => res.sendFile(path.join(__dirname, 'public/sw.js')));
-app.get('/firebase-messaging-sw.js', (req, res) => res.sendFile(path.join(__dirname, 'public/firebase-messaging-sw.js')));
 app.get('/API_DOCS.md', (req, res) => res.sendFile(path.join(__dirname, 'API_DOCS.md')));
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 app.use('/test', express.static(path.join(__dirname, 'public/test')));
@@ -22,16 +21,16 @@ const { broadcastToLargeAudience } = require('./src/batchBroadcaster');
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: true },
+  cors: { origin: true, credentials: true },
   pingTimeout: 60000,
   pingInterval: 25000,
-  perMessageDeflate: false, // Disables CPU-heavy zlib compression for high concurrency
+  perMessageDeflate: false,
   httpCompression: false,
   maxHttpBufferSize: 1e6
 });
 app.set('io', io);
 
-// Optional Redis Adapter (graceful fallback if Redis is not running)
+// Redis Adapter (Optional: graceful fallback to in-memory)
 if (process.env.ENABLE_REDIS === 'true' && process.env.REDIS_URL) {
   try {
     const pubClient = new IORedis(process.env.REDIS_URL, {
@@ -41,7 +40,6 @@ if (process.env.ENABLE_REDIS === 'true' && process.env.REDIS_URL) {
     });
     const subClient = pubClient.duplicate();
 
-    // Prevent unhandled error event crashes
     pubClient.on('error', () => {});
     subClient.on('error', () => {});
 
@@ -59,74 +57,125 @@ if (process.env.ENABLE_REDIS === 'true' && process.env.REDIS_URL) {
   console.log('✓ Running in standalone in-memory Socket.IO mode (Port 3050)');
 }
 
-// visitors (default namespace)
-const SITE_KEY = process.env.SITE_KEY || 'change-me-site';
-io.use((s, next) => {
-  const key = s.handshake.auth && s.handshake.auth.siteKey;
-  if (!process.env.SITE_KEY || key === SITE_KEY || key === 'change-me-site') {
-    return next();
-  }
-  return next(new Error('unauthorized'));
+// Global visitor authentication and room segregation
+const DEFAULT_SITE_KEY = process.env.SITE_KEY || 'change-me-site';
+const ADMIN_KEY = process.env.ADMIN_KEY || 'change-me-admin';
+
+io.use((socket, next) => {
+  const auth = socket.handshake.auth || {};
+  const siteKey = auth.siteKey || socket.handshake.query.siteKey || DEFAULT_SITE_KEY;
+  socket.siteKey = siteKey;
+  return next();
 });
 
-io.on('connection', s => {
-  const { user_id, tags } = s.handshake.auth || {};
-  s.join('all');
-  if (user_id) s.join('user:' + user_id);
-  (Array.isArray(tags) ? tags : []).forEach(t => s.join('tag:' + t));
+io.on('connection', socket => {
+  const { user_id, tags, role } = socket.handshake.auth || {};
+  const siteKey = socket.siteKey || DEFAULT_SITE_KEY;
 
-  // Client subscribes and requests welcome notification
-  s.on('client_subscribe', data => {
-    console.log('Client subscribed via Socket.IO:', s.id, data);
-    s.emit('notify', {
+  // 1. Join site-isolated room so notifications only go to users on the same website
+  socket.join('site:' + siteKey);
+
+  // 2. Global room for all users on this site
+  socket.join('site:' + siteKey + ':all');
+
+  // 3. User & Tag targeting within the site
+  if (user_id) socket.join(`site:${siteKey}:user:${user_id}`);
+  (Array.isArray(tags) ? tags : []).forEach(t => socket.join(`site:${siteKey}:tag:${t}`));
+
+  // 4. Client welcome subscription
+  socket.on('client_subscribe', data => {
+    socket.emit('notify', {
       campaign_id: 'welcome',
       title: process.env.WELCOME_TITLE || 'Thanks For Subscribing',
       body: process.env.WELCOME_BODY || 'You Will Receive Updates Even When Website Is Closed',
       url: process.env.WELCOME_URL || '/',
       icon: '/test/bell.svg',
-      actions: [
-        { action: 'close', title: 'Close' },
-        { action: 'open', title: 'Open' }
+      site_key: siteKey,
+      buttons: [
+        { action: 'close', title: 'Close', type: 'secondary' },
+        { action: 'open', title: 'Open', url: process.env.WELCOME_URL || '/', type: 'primary' }
       ]
     });
   });
 
-  // Allow sending test notifications via Socket.IO (with large-scale chunked broadcast)
-  s.on('send_notification', async payload => {
-    const target = payload && payload.target ? payload.target : 'all';
-    const notificationData = {
-      campaign_id: payload.campaign_id || String(Date.now()),
-      title: payload.title || 'Notification',
-      body: payload.body || 'New update received',
-      url: payload.url || '/',
-      icon: payload.icon || '/test/bell.svg',
-      actions: [
-        { action: 'close', title: 'Close' },
-        { action: 'open', title: 'Open' }
-      ]
-    };
+  // 5. Send notification directly from WebSocket client (SDK or Dashboard)
+  socket.on('send_notification', async (payload, callback) => {
+    try {
+      const target = payload && payload.target ? payload.target : 'all';
+      const targetSiteKey = payload.site_key || siteKey;
 
-    if (target === 'all') {
-      const result = await broadcastToLargeAudience(io, 'all', notificationData, {
-        batchSize: 500,
-        batchDelayMs: 5,
-        onProgress: prog => {
-          adminNs.emit('broadcast_progress', prog);
-          s.emit('broadcast_progress', prog);
-        }
-      });
-      s.emit('broadcast_complete', result);
-    } else {
-      io.to(target).emit('notify', notificationData);
+      const formattedButtons = Array.isArray(payload.buttons)
+        ? payload.buttons
+        : (Array.isArray(payload.actions)
+          ? payload.actions
+          : [
+              { action: 'close', title: 'Close', type: 'secondary' },
+              { action: 'open', title: 'Open', url: payload.url || '/', type: 'primary' }
+            ]);
+
+      const notificationData = {
+        campaign_id: payload.campaign_id || 'ws-' + Date.now(),
+        title: payload.title || 'Notification',
+        body: payload.body || 'New message received',
+        url: payload.url || '/',
+        icon: payload.icon || '/test/bell.svg',
+        image: payload.image || null,
+        site_key: targetSiteKey,
+        buttons: formattedButtons,
+        actions: formattedButtons.map(b => ({ action: b.action, title: b.title })),
+        badge: payload.badge || '/test/bell.svg',
+        data: payload.data || {},
+        created_at: new Date().toISOString()
+      };
+
+      let result = null;
+
+      // Safe isolated device testing
+      if (target.startsWith('socket:')) {
+        const sockId = target.replace('socket:', '');
+        io.to(sockId).emit('notify', notificationData);
+        result = { success: true, target: 'socket:' + sockId, mode: 'direct_socket' };
+      } else if (target === 'self') {
+        socket.emit('notify', notificationData);
+        result = { success: true, target: 'self', mode: 'direct_socket' };
+      } else if (target === 'all') {
+        // High-concurrency chunked broadcast isolated to the sender's site
+        const siteRoom = 'site:' + targetSiteKey + ':all';
+        result = await broadcastToLargeAudience(io, siteRoom, notificationData, {
+          batchSize: 500,
+          batchDelayMs: 5,
+          onProgress: prog => {
+            socket.emit('broadcast_progress', prog);
+            adminNs.emit('broadcast_progress', prog);
+          }
+        });
+        result = { success: true, ...result };
+      } else if (target.startsWith('user:')) {
+        io.to(`site:${targetSiteKey}:${target}`).emit('notify', notificationData);
+        result = { success: true, target: `site:${targetSiteKey}:${target}` };
+      } else if (target.startsWith('tag:')) {
+        io.to(`site:${targetSiteKey}:${target}`).emit('notify', notificationData);
+        result = { success: true, target: `site:${targetSiteKey}:${target}` };
+      } else {
+        io.to(target).emit('notify', notificationData);
+        result = { success: true, target };
+      }
+
+      if (typeof callback === 'function') callback(result);
+      socket.emit('send_notification_response', result);
+    } catch (err) {
+      const errRes = { success: false, error: err.message };
+      if (typeof callback === 'function') callback(errRes);
+      socket.emit('send_notification_response', errRes);
     }
   });
 });
 
-// dashboard (/admin namespace)
+// Admin dashboard namespace
 const adminNs = io.of('/admin');
-adminNs.use((s, next) => {
-  const key = s.handshake.auth && s.handshake.auth.key;
-  if (!process.env.ADMIN_KEY || key === process.env.ADMIN_KEY || key === 'change-me-admin') {
+adminNs.use((socket, next) => {
+  const key = socket.handshake.auth && socket.handshake.auth.key;
+  if (!process.env.ADMIN_KEY || key === ADMIN_KEY || key === 'change-me-admin') {
     return next();
   }
   return next(new Error('unauthorized'));
@@ -134,10 +183,10 @@ adminNs.use((s, next) => {
 
 setInterval(async () => {
   try {
-    const online = (await io.in('all').fetchSockets()).length;
-    adminNs.emit('online', online);
+    const totalOnline = (await io.fetchSockets()).length;
+    adminNs.emit('online', totalOnline);
   } catch (_) {}
 }, 5000);
 
 const PORT = process.env.PORT || 3050;
-server.listen(PORT, () => console.log('push server on :' + PORT));
+server.listen(PORT, () => console.log('✓ WebPush WebSocket engine active on Port ' + PORT));

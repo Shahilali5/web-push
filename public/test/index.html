@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WebPush — Socket.IO Real-Time Engine</title>
+  <title>🔔 WebPush — Socket.IO Real-Time Engine</title>
   <link rel="icon" href="/test/bell.svg">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
@@ -134,6 +134,7 @@
       gap: 8px;
       border-bottom: 1px solid var(--card-border);
       padding-bottom: 2px;
+      overflow-x: auto;
     }
 
     .tab-btn {
@@ -150,12 +151,10 @@
       gap: 6px;
       transition: all 0.2s;
       border-bottom: 2px solid transparent;
+      white-space: nowrap;
     }
 
-    .tab-btn:hover {
-      color: var(--text);
-    }
-
+    .tab-btn:hover { color: var(--text); }
     .tab-btn.active {
       color: #818cf8;
       border-bottom: 2px solid #818cf8;
@@ -167,9 +166,7 @@
       flex-direction: column;
       gap: 20px;
     }
-    .tab-content.active {
-      display: flex;
-    }
+    .tab-content.active { display: flex; }
 
     /* Cards */
     .card {
@@ -191,6 +188,7 @@
       justify-content: space-between;
       color: var(--text);
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     /* Status Grid */
@@ -322,16 +320,8 @@
       outline: none;
       border: none;
     }
-    .btn-sim-primary {
-      background: #4f46e5;
-      color: #fff;
-    }
-    .btn-sim-primary:hover { background: #4338ca; }
-    .btn-sim-secondary {
-      background: rgba(255, 255, 255, 0.08);
-      color: #cbd5e1;
-    }
-    .btn-sim-secondary:hover { background: rgba(255, 255, 255, 0.14); }
+    .btn-sim-primary { background: #4f46e5; color: #fff; }
+    .btn-sim-secondary { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; }
 
     /* Buttons */
     .btn {
@@ -361,17 +351,13 @@
       border-color: #4f46e5;
       box-shadow: 0 4px 12px var(--accent-glow);
     }
-    .btn-primary:hover {
-      background: #4338ca;
-    }
+    .btn-primary:hover { background: #4338ca; }
     .btn-success {
       background: #10b981;
       color: #fff;
       border-color: #10b981;
     }
-    .btn-success:hover {
-      background: #059669;
-    }
+    .btn-success:hover { background: #059669; }
     .btn-sm {
       padding: 5px 10px;
       font-size: 12px;
@@ -400,7 +386,7 @@
       gap: 6px;
     }
 
-    input[type="text"] {
+    input[type="text"], select {
       width: 100%;
       padding: 8px 12px;
       background: var(--code-bg);
@@ -410,7 +396,7 @@
       font-size: 13px;
       outline: none;
     }
-    input[type="text"]:focus {
+    input[type="text"]:focus, select:focus {
       border-color: var(--accent);
     }
 
@@ -462,7 +448,6 @@
     .tag-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
     .tag-click { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
 
-    /* Docs Table */
     .docs-table {
       width: 100%;
       border-collapse: collapse;
@@ -473,10 +458,7 @@
       padding: 10px 12px;
       text-align: left;
     }
-    .docs-table th {
-      background: rgba(255, 255, 255, 0.04);
-      color: #fff;
-    }
+    .docs-table th { background: rgba(255, 255, 255, 0.04); color: #fff; }
   </style>
 </head>
 <body>
@@ -488,7 +470,7 @@
       <div class="brand-icon"><i class="bi bi-bell-fill"></i></div>
       <div>
         <h1>WebPush Engine</h1>
-        <div class="brand-subtitle">Real-Time Socket.IO • Self-Hosted • Zero Cloud Lock-in</div>
+        <div class="brand-subtitle">Pure WebSocket &amp; Socket.IO • Site-Isolated Push • Zero Cloud</div>
       </div>
     </div>
     <div class="header-actions">
@@ -511,20 +493,22 @@
     <button class="tab-btn active" onclick="switchTab('lab')">
       <i class="bi bi-sliders"></i> Test Simulator
     </button>
+    <button class="tab-btn" onclick="switchTab('sender')">
+      <i class="bi bi-send-fill"></i> Push Sender Studio
+    </button>
     <button class="tab-btn" onclick="switchTab('docs')">
-      <i class="bi bi-file-earmark-code-fill"></i> API Documentation
+      <i class="bi bi-file-earmark-code-fill"></i> API &amp; SDK Docs
     </button>
     <button class="tab-btn" onclick="switchTab('logs')">
-      <i class="bi bi-activity"></i> Event Stream Logs
+      <i class="bi bi-activity"></i> Live Stream Logs
     </button>
   </div>
 
-  <!-- TAB 1: Simulator & Customizer -->
+  <!-- TAB 1: Simulator & Device Tester -->
   <div id="tab-lab" class="tab-content active">
-    <!-- Status Card -->
     <section class="card">
       <div class="card-title">
-        <span><i class="bi bi-cpu-fill"></i> Local Connection &amp; State</span>
+        <span><i class="bi bi-cpu-fill"></i> Client Connection &amp; State</span>
         <button class="btn btn-sm" onclick="checkState()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
       </div>
       <div class="status-grid">
@@ -537,8 +521,8 @@
           <span id="socketStatus" class="status-val" style="color: #f59e0b;">Connecting... 🟡</span>
         </div>
         <div class="status-box">
-          <span class="status-label">Service Worker</span>
-          <span id="swStatus" class="status-val">Supported</span>
+          <span class="status-label">Site Isolation Key</span>
+          <span class="status-val"><code id="siteKeyDisplay">change-me-site</code></span>
         </div>
         <div class="status-box">
           <span class="status-label">Audio Synth</span>
@@ -577,7 +561,7 @@
     <!-- Quick Permission & Trigger -->
     <section class="card">
       <div class="card-title">
-        <span><i class="bi bi-lightning-charge-fill"></i> Trigger Actions</span>
+        <span><i class="bi bi-lightning-charge-fill"></i> Device Actions</span>
       </div>
       <div style="display: flex; flex-wrap: wrap; gap: 10px;">
         <button id="btnAllow" class="btn btn-primary" onclick="handleAllow()">
@@ -588,29 +572,49 @@
         </button>
       </div>
     </section>
+  </div>
 
-    <!-- Customizer Panel -->
+  <!-- TAB 2: Push Sender Studio (Send directly from this website) -->
+  <div id="tab-sender" class="tab-content">
     <section class="card">
       <div class="card-title">
-        <span><i class="bi bi-pencil-square"></i> Notification Builder</span>
+        <span><i class="bi bi-broadcast"></i> In-Page Push Notification Sender</span>
         <span class="chip" style="background:rgba(99,102,241,0.12); color:#a5b4fc; border-color:rgba(99,102,241,0.25);">
-          Safe Mode: Only tests on your device
+          Broadcasts only to visitors of this site key
         </span>
       </div>
 
       <div class="form-grid">
         <div class="form-group">
-          <label>Title</label>
-          <input type="text" id="custTitle" value="Special Offer Just For You! 🎉" oninput="syncPreview()">
+          <label>Target Audience</label>
+          <select id="custTarget" onchange="syncTargetField()">
+            <option value="self">Only My Device (Safe Test)</option>
+            <option value="all">All Online Visitors (This Site Key)</option>
+            <option value="user">Specific User ID</option>
+            <option value="tag">Specific Tag</option>
+          </select>
         </div>
+
+        <div class="form-group" id="targetValGroup" style="display:none;">
+          <label id="targetValLabel">User ID or Tag</label>
+          <input type="text" id="custTargetVal" placeholder="e.g. 1024 or vip">
+        </div>
+
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="custTitle" value="Special Announcement! 🎉" oninput="syncPreview()">
+        </div>
+
         <div class="form-group">
           <label>Destination URL</label>
           <input type="text" id="custUrl" value="/test/" oninput="syncPreview()">
         </div>
+
         <div class="form-group" style="grid-column: 1 / -1;">
           <label>Message Body</label>
           <input type="text" id="custBody" value="Your exclusive discount coupon is waiting. Tap to redeem!" oninput="syncPreview()">
         </div>
+
         <div class="form-group">
           <label>Logo / Icon URL</label>
           <input type="text" id="custIcon" value="/test/bell.svg" oninput="syncPreview()">
@@ -620,14 +624,17 @@
             <button class="btn btn-sm" onclick="setPreset('icon', 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png')">🛒 Cart</button>
           </div>
         </div>
+
         <div class="form-group">
           <label>Hero Banner URL (Optional)</label>
           <input type="text" id="custBanner" placeholder="e.g. https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600" oninput="syncPreview()">
         </div>
+
         <div class="form-group">
           <label>Button 1 (Dismiss)</label>
           <input type="text" id="btn1Title" value="Dismiss" oninput="syncPreview()">
         </div>
+
         <div class="form-group">
           <label>Button 2 (Open Action)</label>
           <input type="text" id="btn2Title" value="Claim Offer ↗" oninput="syncPreview()">
@@ -635,8 +642,8 @@
       </div>
 
       <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="btn btn-primary" onclick="dispatchCustomNotification()">
-          <i class="bi bi-phone"></i> Send Test to My Device Only
+        <button class="btn btn-primary" onclick="dispatchPushNotification()">
+          <i class="bi bi-send-fill"></i> Send Push via WebSocket
         </button>
         <button class="btn" onclick="copyCurlSnippet()">
           <i class="bi bi-clipboard-check"></i> Copy cURL API Snippet
@@ -649,124 +656,53 @@
     </section>
   </div>
 
-  <!-- TAB 2: Clean API Docs -->
+  <!-- TAB 3: API & SDK Documentation -->
   <div id="tab-docs" class="tab-content">
     <section class="card">
       <div class="card-title">
-        <span><i class="bi bi-lightning"></i> 1-Line CDN Integration</span>
+        <span><i class="bi bi-lightning"></i> 1-Line Client Embed</span>
       </div>
-      <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Add this script tag to any HTML page to enable push notifications &amp; inbox:</p>
-      <div class="code-box">&lt;script src="https://web-push.shahil-codex.xyz/sdk.js" data-site-key="change-me-site" data-widget="true"&gt;&lt;/script&gt;</div>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Add this script to your site. Visitors will only receive notifications broadcasted to your site key:</p>
+      <div class="code-box">&lt;script src="https://web-push.shahil-codex.xyz/sdk.js" data-site-key="YOUR_SITE_KEY" data-widget="true"&gt;&lt;/script&gt;</div>
     </section>
 
     <section class="card">
       <div class="card-title">
-        <span><i class="bi bi-send-fill"></i> REST API Endpoint (`POST /api/v1/notify`)</span>
+        <span><i class="bi bi-code-slash"></i> In-Page JavaScript Push Sender</span>
       </div>
-      <table class="docs-table">
-        <thead>
-          <tr>
-            <th>Field</th>
-            <th>Type</th>
-            <th>Required</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>title</code></td>
-            <td>string</td>
-            <td>Yes</td>
-            <td>Notification headline</td>
-          </tr>
-          <tr>
-            <td><code>body</code></td>
-            <td>string</td>
-            <td>Yes</td>
-            <td>Main notification message</td>
-          </tr>
-          <tr>
-            <td><code>url</code></td>
-            <td>string</td>
-            <td>No</td>
-            <td>Target click URL (defaults to <code>/</code>)</td>
-          </tr>
-          <tr>
-            <td><code>icon</code></td>
-            <td>string</td>
-            <td>No</td>
-            <td>Logo icon URL (recommended 128x128px)</td>
-          </tr>
-          <tr>
-            <td><code>target</code></td>
-            <td>string</td>
-            <td>No</td>
-            <td><code>"all"</code>, <code>"user:&lt;id&gt;"</code>, <code>"socket:&lt;id&gt;"</code></td>
-          </tr>
-          <tr>
-            <td><code>buttons</code></td>
-            <td>array</td>
-            <td>No</td>
-            <td>Array of <code>{ action, title, url, type }</code> objects</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style="margin-top: 14px;">
-        <div class="code-box">curl -X POST https://web-push.shahil-codex.xyz/api/v1/notify \
-  -H "Content-Type: application/json" \
-  -H "x-site-key: change-me-site" \
-  -d '{
-    "title": "Flash Sale!",
-    "body": "50% off all plans today.",
-    "url": "https://yoursite.com/deals",
-    "target": "all",
-    "buttons": [
-      { "action": "close", "title": "Dismiss" },
-      { "action": "open", "title": "View Deals ↗", "url": "https://yoursite.com/deals" }
-    ]
-  }'</div>
-      </div>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Send notifications right from your own frontend JavaScript:</p>
+      <div class="code-box">// Trigger a push to all visitors on your website
+WebPush.send({
+  title: 'Flash Sale Live!',
+  body: '50% off all courses for 2 hours.',
+  url: 'https://mysite.com/courses',
+  buttons: [
+    { action: 'close', title: 'Later' },
+    { action: 'open', title: 'Enroll Now ↗', url: 'https://mysite.com/courses' }
+  ]
+});</div>
     </section>
 
     <section class="card">
       <div class="card-title">
-        <span><i class="bi bi-code-slash"></i> Client SDK JavaScript API</span>
+        <span><i class="bi bi-hdd-network"></i> Backend REST API (`POST /api/v1/notify`)</span>
       </div>
       <table class="docs-table">
         <thead>
-          <tr>
-            <th>Method</th>
-            <th>Description</th>
-          </tr>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td><code>WebPush.subscribe()</code></td>
-            <td>Requests notification permission and registers socket connection</td>
-          </tr>
-          <tr>
-            <td><code>WebPush.playSound(preset)</code></td>
-            <td>Plays a Web Audio chime (<code>'chime'</code>, <code>'coin'</code>, <code>'alert'</code>, <code>'success'</code>)</td>
-          </tr>
-          <tr>
-            <td><code>WebPush.openInbox()</code></td>
-            <td>Opens the floating notification center popup drawer</td>
-          </tr>
-          <tr>
-            <td><code>WebPush.clearInbox()</code></td>
-            <td>Clears all cached notifications from local storage</td>
-          </tr>
-          <tr>
-            <td><code>WebPush.getSocket()</code></td>
-            <td>Returns the underlying active Socket.IO client instance</td>
-          </tr>
+          <tr><td><code>title</code></td><td>string</td><td>Yes</td><td>Notification headline</td></tr>
+          <tr><td><code>body</code></td><td>string</td><td>Yes</td><td>Detailed description message</td></tr>
+          <tr><td><code>url</code></td><td>string</td><td>No</td><td>Destination link (defaults to <code>/</code>)</td></tr>
+          <tr><td><code>target</code></td><td>string</td><td>No</td><td><code>"all"</code>, <code>"user:&lt;id&gt;"</code>, <code>"tag:&lt;name&gt;"</code>, or <code>"socket:&lt;id&gt;"</code></td></tr>
+          <tr><td><code>buttons</code></td><td>array</td><td>No</td><td>Interactive action buttons</td></tr>
         </tbody>
       </table>
     </section>
   </div>
 
-  <!-- TAB 3: Event Stream Logs -->
+  <!-- TAB 4: Event Stream Logs -->
   <div id="tab-logs" class="tab-content">
     <section class="card">
       <div class="card-title">
@@ -857,7 +793,6 @@
 
   function checkState() {
     const permBadge = document.getElementById('permBadge');
-    const swStatus = document.getElementById('swStatus');
     const socketStatus = document.getElementById('socketStatus');
 
     if (!('Notification' in window)) {
@@ -876,14 +811,6 @@
     } else {
       permBadge.className = 'badge badge-prompt';
       permBadge.textContent = 'Prompt';
-    }
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then(reg => {
-        swStatus.innerHTML = reg ? 'Active (/sw.js) ✅' : 'Supported (Ready)';
-      }).catch(() => {
-        swStatus.textContent = 'Supported';
-      });
     }
 
     const sock = window.WebPush && window.WebPush.getSocket ? window.WebPush.getSocket() : null;
@@ -934,6 +861,22 @@
     }
   }
 
+  function syncTargetField() {
+    const val = document.getElementById('custTarget').value;
+    const group = document.getElementById('targetValGroup');
+    const label = document.getElementById('targetValLabel');
+    if (val === 'user') {
+      group.style.display = 'flex';
+      label.textContent = 'Target User ID';
+    } else if (val === 'tag') {
+      group.style.display = 'flex';
+      label.textContent = 'Target Tag Name';
+    } else {
+      group.style.display = 'none';
+    }
+    updateCurlSnippet();
+  }
+
   function syncPreview() {
     const title = document.getElementById('custTitle').value || 'Notification Title';
     const body = document.getElementById('custBody').value || 'Description body';
@@ -981,9 +924,20 @@
     }
   }
 
-  async function dispatchCustomNotification() {
+  // Push Notification Dispatcher
+  async function dispatchPushNotification() {
+    const targetType = document.getElementById('custTarget').value;
+    const targetVal = document.getElementById('custTargetVal').value.trim();
     const currentSocket = window.WebPush && window.WebPush.getSocket ? window.WebPush.getSocket() : null;
-    const deviceTarget = currentSocket && currentSocket.id ? 'socket:' + currentSocket.id : 'self';
+
+    let computedTarget = 'all';
+    if (targetType === 'self') {
+      computedTarget = currentSocket && currentSocket.id ? 'socket:' + currentSocket.id : 'self';
+    } else if (targetType === 'user') {
+      computedTarget = 'user:' + targetVal;
+    } else if (targetType === 'tag') {
+      computedTarget = 'tag:' + targetVal;
+    }
 
     const payload = {
       title: document.getElementById('custTitle').value.trim() || 'Notice',
@@ -991,32 +945,32 @@
       url: document.getElementById('custUrl').value.trim() || '/test/',
       icon: document.getElementById('custIcon').value.trim() || '/test/bell.svg',
       image: document.getElementById('custBanner').value.trim() || null,
-      target: deviceTarget,
+      target: computedTarget,
       buttons: [
         { action: 'close', title: document.getElementById('btn1Title').value.trim() || 'Close', type: 'secondary' },
         { action: 'open', title: document.getElementById('btn2Title').value.trim() || 'Open ↗', url: document.getElementById('custUrl').value.trim() || '/test/', type: 'primary' }
       ]
     };
 
-    addLog(`Sending test notification to your device only: "${payload.title}"`, 'info');
+    addLog(`Broadcasting push notification: "${payload.title}" (Target: ${payload.target})`, 'info');
 
-    if (window.WebPush && typeof window.WebPush.notify === 'function') {
-      window.WebPush.notify(payload);
-    }
-
-    try {
-      await fetch('/api/v1/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      addLog(`✓ Test notification sent to your device only.`, 'success');
-    } catch (e) {
-      addLog(`Local device notification delivered.`, 'success');
+    if (window.WebPush && typeof window.WebPush.send === 'function') {
+      try {
+        const res = await window.WebPush.send(payload);
+        addLog(`✓ Push notification dispatched via WebSocket!`, 'success');
+      } catch (err) {
+        addLog(`Push dispatch error: ${err.message}`, 'warn');
+      }
     }
   }
 
   function updateCurlSnippet() {
+    const targetType = document.getElementById('custTarget').value;
+    const targetVal = document.getElementById('custTargetVal').value.trim();
+    let computedTarget = 'all';
+    if (targetType === 'user') computedTarget = 'user:' + targetVal;
+    else if (targetType === 'tag') computedTarget = 'tag:' + targetVal;
+
     const title = document.getElementById('custTitle').value.replace(/"/g, '\\"');
     const body = document.getElementById('custBody').value.replace(/"/g, '\\"');
     const url = document.getElementById('custUrl').value;
@@ -1026,12 +980,13 @@
 
     const curl = `curl -X POST https://web-push.shahil-codex.xyz/api/v1/notify \\
   -H "Content-Type: application/json" \\
+  -H "x-site-key: change-me-site" \\
   -d '{
     "title": "${title}",
     "body": "${body}",
     "url": "${url}",
     "icon": "${icon}",
-    "target": "all",
+    "target": "${computedTarget}",
     "buttons": [
       { "action": "close", "title": "${btn1}", "type": "secondary" },
       { "action": "open", "title": "${btn2}", "url": "${url}", "type": "primary" }
