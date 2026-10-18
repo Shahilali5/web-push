@@ -566,11 +566,14 @@
           <span class="status-val"><code id="siteKeyDisplay">change-me-site</code></span>
         </div>
         <div class="status-box">
-          <span class="status-label">Audio Synth</span>
-          <div style="display:flex; gap:4px; margin-top:2px;">
-            <button class="btn btn-sm" onclick="playAudioPreset('chime')">Chime</button>
-            <button class="btn btn-sm" onclick="playAudioPreset('coin')">Coin</button>
-            <button class="btn btn-sm" onclick="playAudioPreset('alert')">Alert</button>
+          <span class="status-label">Widget Style &amp; Launcher</span>
+          <div style="display:flex; gap:6px; margin-top:2px;">
+            <select id="selWidgetType" onchange="changeWidgetStyle(this.value)" style="padding:3px 6px; font-size:11px;">
+              <option value="floating">Floating Button</option>
+              <option value="pill">Pill Badge</option>
+              <option value="minimal">Minimalist Glass</option>
+              <option value="bar">Alert Tab</option>
+            </select>
           </div>
         </div>
       </div>
@@ -787,6 +790,13 @@ WebPush.send({
       ? '<i class="bi bi-volume-up-fill"></i> Sound: ON'
       : '<i class="bi bi-volume-mute-fill"></i> Sound: OFF';
     addLog(`Notification sound: ${audioEnabled ? 'ON' : 'MUTED'}`, 'info');
+  }
+
+  function changeWidgetStyle(style) {
+    if (window.WebPush && typeof window.WebPush.configure === 'function') {
+      window.WebPush.configure({ widgetType: style });
+      addLog(`Widget launcher style switched to: ${style}`, 'info');
+    }
   }
 
   function addLog(message, type = 'info') {

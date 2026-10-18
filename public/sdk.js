@@ -2,15 +2,17 @@
    WebPush — Zero-Cloud Socket.IO Client SDK
    Author: Shahil Ali (https://github.com/Shahilali5)
    Features:
-     - 1-line script embed
-     - Dynamic Smart Icon Resolver (Notification Icon -> Website Favicon/Apple Touch Icon/Logo -> Bell Fallback)
-     - Full Developer Customization (themes, colors, launcher icon, sound presets, callbacks)
-     - Smooth bottom/center half-screen modal drawer
-     - Site-isolated WebSocket connections (only visitors of your site receive)
-     - In-page push sending via WebPush.send({ ... })
-     - Floating Bell / Message launcher with unread counter
-     - Web Audio Synthesizer (chime, coin, alert, success)
-     - Native Service Worker OS banners with action buttons
+     - 1-line script embed with global CDN support
+     - 4 Modern Widget Styles:
+         * 'floating' (default): Floating gradient action button with pulse ring
+         * 'pill': Sleek interactive pill button ("🔔 Notifications")
+         * 'minimal': Elegant borderless minimalist icon
+         * 'bar': Subtle top/bottom alert bar indicator
+     - Smart Icon Resolver (Notification Icon -> Website Favicon/Apple Touch Icon -> Bell Fallback)
+     - Interactive Bottom/Center Drawer Modal with backdrop blur
+     - Pure Site-Isolated WebSocket Engine
+     - Web Audio Synthesizer (4 presets: chime, coin, alert, success)
+     - Real-time in-page push sender via WebPush.send({ ... })
    ========================================================================== */
 
 (function () {
@@ -22,6 +24,8 @@
   var pos = (s.dataset && s.dataset.toast) || 'top-right';
   var swPath = (s.dataset && s.dataset.sw) || '/sw.js';
   var enableWidget = (s.dataset && s.dataset.widget) !== 'false';
+  var widgetType = (s.dataset && s.dataset.widgetType) || 'floating'; // 'floating' | 'pill' | 'minimal' | 'bar'
+  var widgetPos = (s.dataset && s.dataset.widgetPos) || 'bottom-right'; // 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
   var soundEnabled = (s.dataset && s.dataset.sound) !== 'false';
   var defaultLogo = (s.dataset && s.dataset.icon) || '';
   var themeColor = (s.dataset && s.dataset.theme) || '#4f46e5';
@@ -34,16 +38,13 @@
   function detectWebsiteLogo() {
     if (defaultLogo) return defaultLogo;
 
-    // Check apple-touch-icon
     var appleTouch = document.querySelector('link[rel="apple-touch-icon"]');
     if (appleTouch && appleTouch.href) return appleTouch.href;
 
-    // Check shortcut icon or standard icon
     var fav = document.querySelector('link[rel="icon"]') || 
               document.querySelector('link[rel="shortcut icon"]');
     if (fav && fav.href) return fav.href;
 
-    // Fallback to origin favicon
     try {
       return window.location.origin + '/favicon.ico';
     } catch (_) {
@@ -53,7 +54,6 @@
 
   var resolvedWebsiteLogo = detectWebsiteLogo();
 
-  // Helper: Resolve notification icon with intelligent fallback
   function resolveIcon(icon) {
     if (icon && typeof icon === 'string' && icon.trim().length > 0) {
       return icon.trim();
@@ -172,19 +172,46 @@
     renderInboxList();
   }
 
-  // Half-Screen Modal / Sheet
+  // Position coordinates helper
+  function getPositionStyle(type) {
+    var p = widgetPos;
+    var base = 'position:fixed;z-index:999990;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+    if (p === 'bottom-left') return base + 'bottom:24px;left:24px;';
+    if (p === 'top-right') return base + 'top:24px;right:24px;';
+    if (p === 'top-left') return base + 'top:24px;left:24px;';
+    return base + 'bottom:24px;right:24px;';
+  }
+
+  // Multi-Style Widget Creator
   function createInboxWidget() {
     if (!enableWidget || document.getElementById('webpush-inbox-widget')) return;
 
     var launcher = document.createElement('div');
     launcher.id = 'webpush-inbox-widget';
-    launcher.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999990;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+    launcher.style.cssText = getPositionStyle(widgetType);
 
     var bellBtn = document.createElement('button');
     bellBtn.id = 'webpush-bell-button';
     bellBtn.setAttribute('aria-label', 'Open notification center');
-    bellBtn.style.cssText = 'width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg, ' + themeColor + ' 0%, #7c3aed 100%);color:#fff;border:none;box-shadow:0 10px 28px rgba(79,70,229,0.5),0 2px 6px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);position:relative;outline:none;';
-    bellBtn.innerHTML = '<i class="bi bi-chat-left-dots-fill"></i>';
+
+    // Render Widget based on chosen Type
+    if (widgetType === 'pill') {
+      // 1. Sleek Pill Style
+      bellBtn.style.cssText = 'height:42px;padding:0 18px;border-radius:21px;background:#0d1322;color:#fff;border:1px solid rgba(255,255,255,0.15);box-shadow:0 8px 24px rgba(0,0,0,0.5);cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);position:relative;outline:none;';
+      bellBtn.innerHTML = '<i class="bi bi-bell-fill" style="color:' + themeColor + ';font-size:15px;"></i> <span>Updates</span>';
+    } else if (widgetType === 'minimal') {
+      // 2. Minimalist Glass Button
+      bellBtn.style.cssText = 'width:46px;height:46px;border-radius:14px;background:rgba(15,23,42,0.85);backdrop-filter:blur(8px);color:#cbd5e1;border:1px solid rgba(255,255,255,0.12);box-shadow:0 6px 18px rgba(0,0,0,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all 0.2s;position:relative;outline:none;';
+      bellBtn.innerHTML = '<i class="bi bi-bell"></i>';
+    } else if (widgetType === 'bar') {
+      // 3. Compact Alert Bar Tab
+      bellBtn.style.cssText = 'height:36px;padding:0 14px;border-radius:8px;background:' + themeColor + ';color:#fff;border:none;box-shadow:0 4px 14px rgba(79,70,229,0.4);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;transition:all 0.2s;position:relative;outline:none;';
+      bellBtn.innerHTML = '<i class="bi bi-chat-dots-fill"></i> <span>Notifications</span>';
+    } else {
+      // 4. Default: Floating Gradient Action Button
+      bellBtn.style.cssText = 'width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg, ' + themeColor + ' 0%, #7c3aed 100%);color:#fff;border:none;box-shadow:0 10px 28px rgba(79,70,229,0.5),0 2px 6px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);position:relative;outline:none;';
+      bellBtn.innerHTML = '<i class="bi bi-chat-left-dots-fill"></i>';
+    }
 
     var badge = document.createElement('span');
     badge.id = 'webpush-badge-count';
@@ -238,7 +265,7 @@
     document.body.appendChild(backdrop);
     document.body.appendChild(modal);
 
-    bellBtn.onmouseenter = function () { this.style.transform = 'scale(1.08)'; };
+    bellBtn.onmouseenter = function () { this.style.transform = 'scale(1.06)'; };
     bellBtn.onmouseleave = function () { this.style.transform = 'scale(1)'; };
 
     bellBtn.onclick = function (e) {
@@ -584,10 +611,17 @@
     if (options.theme) themeColor = options.theme;
     if (options.sound !== undefined) soundEnabled = Boolean(options.sound);
     if (options.siteKey) KEY = options.siteKey;
+    if (options.widgetType) widgetType = options.widgetType;
+    if (options.widgetPos) widgetPos = options.widgetPos;
 
-    var bellBtn = document.getElementById('webpush-bell-button');
-    if (bellBtn && options.theme) {
-      bellBtn.style.background = 'linear-gradient(135deg, ' + options.theme + ' 0%, #7c3aed 100%)';
+    var currentWidget = document.getElementById('webpush-inbox-widget');
+    if (currentWidget) {
+      currentWidget.remove();
+      var m = document.getElementById('webpush-inbox-modal');
+      var b = document.getElementById('webpush-inbox-backdrop');
+      if (m) m.remove();
+      if (b) b.remove();
+      createInboxWidget();
     }
   }
 

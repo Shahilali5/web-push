@@ -23,9 +23,18 @@ Place this script before `</body>` on any website:
 <script 
   src="https://web-push.shahil-codex.xyz/sdk.js" 
   data-site-key="my-website-key" 
-  data-widget="true">
+  data-widget="true"
+  data-widget-type="floating"
+  data-widget-pos="bottom-right"
+  data-theme="#4f46e5">
 </script>
 ```
+
+### Available Widget Types:
+- `floating` (Default): Modern action button with pulse ring
+- `pill`: Sleek interactive pill button (`🔔 Updates`)
+- `minimal`: Elegant minimalist glass button
+- `bar`: Compact alert bar tab
 
 ---
 
