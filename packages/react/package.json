@@ -1,0 +1,20 @@
+{
+  "name": "@webpush/react",
+  "version": "1.0.0",
+  "description": "Ready-to-use React & Next.js NotificationBell and Inbox Drawer components for WebPush pure Socket.IO engine.",
+  "main": "index.js",
+  "keywords": [
+    "react-notification",
+    "nextjs-notification",
+    "webpush",
+    "notification-bell",
+    "inbox-drawer",
+    "socketio"
+  ],
+  "author": "Shahil Ali (https://github.com/Shahilali5)",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  }
+}

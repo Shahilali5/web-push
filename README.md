@@ -2,6 +2,14 @@
 
 100% self-hosted, independent real-time push notification system built with **Node.js, Express, and Socket.IO**. Zero Firebase, zero Apple APNs, and zero third-party cloud lock-in.
 
+<div align="center">
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
+[![Deploy to AWS EC2](https://img.shields.io/badge/Deploy%20to-AWS%20EC2-FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/ec2/)
+
+</div>
+
 ---
 
 ## 🚀 How It Works
@@ -96,6 +104,26 @@ WebPush.configure({
   theme: '#4f46e5',                       // Brand accent color
   sound: true                             // Web Audio chimes
 });
+```
+
+---
+
+## ⚛️ React & Next.js Integration
+
+Install or import the official React components:
+
+```jsx
+import { WebPushProvider, NotificationBell, useWebPush } from './packages/react';
+
+export default function App() {
+  return (
+    <WebPushProvider siteKey="my-site" theme="#4f46e5" widgetType="floating">
+      <header>
+        <NotificationBell />
+      </header>
+    </WebPushProvider>
+  );
+}
 ```
 
 ---

@@ -96,8 +96,8 @@
     });
   }
 
-  // Web Audio Synthesizer
-  function playSound(type) {
+  // Web Audio Synthesizer (Sound Store: 8 Presets + Custom Frequency)
+  function playSound(type, customHz) {
     if (!soundEnabled) return;
     try {
       var ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -105,6 +105,18 @@
       var osc2 = ctx.createOscillator();
       var gain = ctx.createGain();
       var t = ctx.currentTime;
+
+      if (typeof customHz === 'number') {
+        // Custom Frequency Mode
+        osc1.frequency.setValueAtTime(customHz, t);
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        osc1.connect(gain);
+        gain.connect(ctx.destination);
+        osc1.start(t);
+        osc1.stop(t + 0.35);
+        return;
+      }
 
       if (type === 'coin') {
         osc1.frequency.setValueAtTime(987.77, t);
@@ -116,7 +128,58 @@
         osc1.frequency.setValueAtTime(523.25, t);
         osc1.frequency.setValueAtTime(659.25, t + 0.08);
         osc1.frequency.setValueAtTime(783.99, t + 0.16);
+      } else if (type === 'pop') {
+        // Modern soft bubble pop
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(800, t);
+        osc1.frequency.exponentialRampToValueAtTime(400, t + 0.06);
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+        osc1.connect(gain);
+        gain.connect(ctx.destination);
+        osc1.start(t);
+        osc1.stop(t + 0.06);
+        return;
+      } else if (type === 'bubble') {
+        // Double water droplet bubble
+        osc1.frequency.setValueAtTime(600, t);
+        osc1.frequency.exponentialRampToValueAtTime(1200, t + 0.08);
+        gain.gain.setValueAtTime(0.22, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        osc1.connect(gain);
+        gain.connect(ctx.destination);
+        osc1.start(t);
+        osc1.stop(t + 0.12);
+        return;
+      } else if (type === 'gentle') {
+        // Soft calming acoustic notification
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(440, t);
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(554.37, t + 0.05);
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+        osc1.start(t);
+        osc2.start(t + 0.05);
+        osc1.stop(t + 0.6);
+        osc2.stop(t + 0.6);
+        return;
+      } else if (type === 'bell') {
+        // High crystal bell resonance
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(1046.50, t);
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+        osc1.connect(gain);
+        gain.connect(ctx.destination);
+        osc1.start(t);
+        osc1.stop(t + 0.8);
+        return;
       } else {
+        // Default Chime
         osc1.frequency.setValueAtTime(587.33, t);
         osc2.frequency.setValueAtTime(880.00, t + 0.08);
         osc2.connect(gain);
